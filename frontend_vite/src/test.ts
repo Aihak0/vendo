@@ -1,0 +1,1 @@
+alert("Vite Berhasil Baca File JS!");
