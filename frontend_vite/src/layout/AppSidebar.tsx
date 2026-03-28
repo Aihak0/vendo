@@ -64,6 +64,24 @@ export function AppSidebar() {
             label="Mesin" 
             isOpen={isOpen} 
           />
+          <NavItem 
+            href={`/user`}
+            icon={<LayoutDashboard size={22} />} 
+            label="User" 
+            isOpen={isOpen} 
+          />
+          <NavItem 
+            href={`/transaksi`}
+            icon={<LayoutDashboard size={22} />} 
+            label="Transaksi" 
+            isOpen={isOpen} 
+          />
+          <NavItem 
+            href={`/pergerakan-stock`}
+            icon={<LayoutDashboard size={22} />} 
+            label="Pergerakan Stock" 
+            isOpen={isOpen} 
+          />
          
         </nav>
            <hr className="mx-4 my-0 border-gray-300" />

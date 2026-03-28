@@ -31,10 +31,8 @@ export default function CustomDropdown({
       <div>
         <MenuButton
           className={`
-            inline-flex w-full justify-center items-center gap-x-1.5 
-            rounded-md bg-white/10 px-1 py-2 text-sm font-semibold 
-             ring-1 ring-inset ring-white/5 
-            hover:bg-white/20 focus:outline-none focus:ring-2
+           
+            outline-none
             ${buttonClassName}
           `}
         >

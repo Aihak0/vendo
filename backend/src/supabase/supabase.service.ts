@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class SupabaseService {
   private client: SupabaseClient;
+  
 
   constructor(private configService: ConfigService) {
     const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
@@ -14,7 +15,20 @@ export class SupabaseService {
       throw new Error('Supabase environment variables not defined');
     }
 
-    this.client = createClient(supabaseUrl, supabaseKey);
+    this.client = createClient(supabaseUrl, supabaseKey, {
+          auth: {
+            persistSession: false,
+          },
+          global: {
+            fetch: (url, options) => {
+              return fetch(url, { 
+                ...options, 
+                // Tambahne signal timeout manual yen perlu, 
+                // tapi secara default Supabase wis cukup oke.
+              });
+            },
+          },
+        });
   }
 
   getClient(): SupabaseClient {

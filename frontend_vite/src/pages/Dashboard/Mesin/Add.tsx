@@ -263,7 +263,6 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
             total_slot: totalSlot, 
             slots: slot
         };
-        console.log("nyeyeyeye => ",payload);
         mutation.mutate(payload);
     }
 
@@ -308,7 +307,7 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
                                         />
                                     
                                     </div>
-                                </div>
+                                </div> 
                                 
                                 <div className="mb-0">
                                     <label  className="block mb-2.5 text-sm font-medium text-xs">Lokasi</label>
@@ -374,22 +373,22 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
                                 <div className="flex items-center gap-3 mb-3">
                                     <label className="text-sm text-gray-500">Baris</label>
                                     <div className="relative">
-                                    <select
-                                        className={`overflow-hidden pr-8 truncate h-full appearance-none block px-3 py-1 bg-zinc-50 border border-gray-300 text-xs rounded-base focus:outline-hidden focus:ring-0 shadow-xs placeholder:text-body rounded-md cursor-pointer`}
-                                        value={rows}
-                                        onChange={(e) => {
-                                        handleSetRows(Number(e.target.value));
-                                        }}
-                                    >
-                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-                                        <option key={n} value={n}>
-                                            {n}
-                                        </option>
-                                        ))}
-                                    </select>
-                                    <div className={`pointer-events-none absolute inset-y-0 right-0 flex items-center px-2`}>
-                                        <ChevronsDown size={12}/>
-                                    </div>
+                                        <select
+                                            className={`overflow-hidden pr-8 truncate h-full appearance-none block px-3 py-1 bg-zinc-50 border border-gray-300 text-xs rounded-base focus:outline-hidden focus:ring-0 shadow-xs placeholder:text-body rounded-md cursor-pointer`}
+                                            value={rows}
+                                            onChange={(e) => {
+                                            handleSetRows(Number(e.target.value));
+                                            }}
+                                        >
+                                            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+                                            <option key={n} value={n}>
+                                                {n}
+                                            </option>
+                                            ))}
+                                        </select>
+                                        <div className={`pointer-events-none absolute inset-y-0 right-0 flex items-center px-2`}>
+                                            <ChevronsDown size={12}/>
+                                        </div>
                                     </div>
                                     <button onClick={handleReset} className="py-1 px-3 bg-amber-400 text-xs rounded text-white hover:bg-amber-500 shadow-md shadow-amber-300/50">
                                     Reset semua

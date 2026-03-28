@@ -10,10 +10,11 @@ import ProductPage from "./pages/Dashboard/Produk/Produk";
 import MesinPage from "./pages/Dashboard/Mesin/MesinPage";
 import LandingPage from "./pages/LandingPage";
 import NotFound from "./NotFound";
+import UserPage from "./pages/Dashboard/User/UserPage";
 
 function AppContent() {
   const location = useLocation();
-  const validPaths = ['/', '/login', '/dashboard', '/produk', '/mesin'];
+  const validPaths = ['/', '/login', '/dashboard', '/produk', '/mesin', '/user'];
   const isLoginPage = location.pathname === '/login';
   const isLandingPage = location.pathname === '/';
   const isNotFound = !validPaths.includes(location.pathname);
@@ -59,6 +60,7 @@ function AppContent() {
                 <Route path="/dashboard" element={<Home />} />
                 <Route path="/produk" element={<ProductPage />} />
                 <Route path="/mesin" element={<MesinPage />} />
+                <Route path="/user" element={<UserPage />} />
               </Route>
               
              

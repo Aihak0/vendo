@@ -24,6 +24,7 @@
     "apexcharts": "^5.10.1",
     "axios": "^1.13.6",
     "clsx": "^2.1.1",
+    "dayjs": "^1.11.20",
     "flatpickr": "^4.6.13",
     "lucide-react": "^0.577.0",
     "react": "^19.2.0",

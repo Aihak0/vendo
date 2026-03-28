@@ -22,8 +22,7 @@ export default function MesinPage() {
 
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
-   const [search, setSearch] = useState("");
-    const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState<string[]>([]);
    const columns = [
     { key: "kode", label: "Kode" },
     { key: "nama", label: "Nama" },
@@ -31,7 +30,7 @@ export default function MesinPage() {
     { key: "status", label: "Status" },
   ];
 
-    const toggleSort = (key: string) => {
+  const toggleSort = (key: string) => {
     if (sortKey === key) setSortAsc(!sortAsc);
     else { setSortKey(key); setSortAsc(true); }
   };

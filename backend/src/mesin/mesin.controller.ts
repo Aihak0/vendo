@@ -1,10 +1,13 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { MesinService } from './mesin.service';
+import { AuthGuard } from 'src/auth/auth.guard';
+import { RolesGuard } from 'src/roles/roles.guard';
 
 @Controller('mesin')
 export class MesinController {
     constructor(private readonly mesinService: MesinService){}
     @Get()
+    @UseGuards(AuthGuard)
     async findAll(@Query('search') search: string){
       return await this.mesinService.findAll(search);
     }
