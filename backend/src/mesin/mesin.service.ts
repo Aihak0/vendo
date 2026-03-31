@@ -1,10 +1,13 @@
-import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices/client/client-proxy';
 import { metadata } from 'reflect-metadata/no-conflict';
 import { SupabaseService } from 'src/supabase/supabase.service';
 
 @Injectable()
 export class MesinService {
-    constructor(private supabaseService: SupabaseService){}
+    constructor(private supabaseService: SupabaseService,
+       @Inject('HIVE_CLIENT') private client: ClientProxy,
+    ){}
     async findAll(search?: string){
         const supabase = this.supabaseService.getClient();
 
@@ -147,5 +150,21 @@ export class MesinService {
       }
   
       return { message: 'Produk berhasil dihapus' };
+    }
+
+    async updateStatus(data: any){
+      const supabase = this.supabaseService.getClient();
+      const { error: errorUpdate } = await supabase
+        .from("mesin")
+        .update({ status: data.status })
+        .eq("kode", data.kode);
+
+        if (errorUpdate) {
+          throw new InternalServerErrorException(errorUpdate.message);
+        }
+        this.client.emit(`mesin/status/${data.kode}`, {
+            success: true,
+            message: "Status mesin berhasil diperbarui" ,
+        });
     }
 }

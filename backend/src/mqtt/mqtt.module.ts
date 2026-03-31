@@ -8,9 +8,13 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
         name: 'HIVE_CLIENT',
         transport: Transport.MQTT,
         options: {
-          url: 'mqtts://bc39c402663344478d41da67942456d4.s1.eu.hivemq.cloud:8883',
-          username: 'okelah',
-          password: 'Okelah12',
+          url: 'mqtts://okelah:Okelah12@bc39c402663344478d41da67942456d4.s1.eu.hivemq.cloud:8883',
+          // Tambahkan ini untuk kestabilan koneksi HiveMQ Cloud
+          connectTimeout: 10000,
+          reconnectPeriod: 5000,
+          tls: {
+            rejectUnauthorized: false, // Penting agar tidak gagal saat validasi sertifikat
+          },
         },
       },
     ]),

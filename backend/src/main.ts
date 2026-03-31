@@ -13,12 +13,15 @@ async function bootstrap() {
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.MQTT,
     options: {
-      url: 'mqtts://bc39c402663344478d41da67942456d4.s1.eu.hivemq.cloud:8883',
-      username: 'okelah', // Buat di dashboard HiveMQ
-      password: 'Okelah12',
-      protocol: 'mqtts',
-      // subscribeOptions: { qos: 1 }, // Opsional
+      url: 'mqtts://okelah:Okelah12@bc39c402663344478d41da67942456d4.s1.eu.hivemq.cloud:8883',
+      tls: {
+        rejectUnauthorized: false,
+      },
+      subscribeOptions: {
+        qos: 1, // Angka 0, 1, atau 2
+      },
     },
+    
   });
 
   await app.startAllMicroservices().then(() => console.log("mqtt Service connected and listening..."))

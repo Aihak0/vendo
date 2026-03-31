@@ -2,24 +2,48 @@ import { BadRequestException, Inject, Injectable, InternalServerErrorException }
 import { ClientProxy } from '@nestjs/microservices';
 import { MidtransService } from 'src/midtrans/midtrans.service';
 import { SupabaseService } from 'src/supabase/supabase.service';
+import { MqttRecordBuilder } from '@nestjs/microservices';
+import { lastValueFrom } from 'rxjs';
 
 @Injectable()
 export class TransaksiService {
-    constructor(private readonly midtransService: MidtransService,
-                private supabaseService: SupabaseService,
-                @Inject('HIVE_CLIENT') private client: ClientProxy
-    ){}
-    
-  async paymentReq(data: any) {
+  constructor(private readonly midtransService: MidtransService,
+              private supabaseService: SupabaseService,
+              @Inject('HIVE_CLIENT') private client: ClientProxy
+  ){}
+
+  private async sendMqtt(topic: string, payload: any, qos: 0 | 1 | 2 = 1) {
+    try {
+      const record = new MqttRecordBuilder(payload)
+        .setQoS(qos)
+        .build();
+
+      // Gunakan lastValueFrom agar NestJS benar-benar mengirim pesan sebelum fungsi selesai
+      await lastValueFrom(this.client.emit(topic, record));
+      console.log(`[MQTT] Terkirim ke ${topic} dengan QoS ${qos}`);
+    } catch (error) {
+      console.error(`[MQTT] Gagal kirim ke ${topic}:`, error.message);
+    }
+  }
+  // Helper untuk pesan yang lebih rapi
+  private getFriendlyMessage(status: string): string {
+    const messages = {
+      settlement: "Pembayaran Berhasil!",
+      capture: "Pembayaran Berhasil!",
+      deny: "Pembayaran Ditolak.",
+      cancel: "Pembayaran Dibatalkan.",
+      expire: "Pembayaran Kadaluarsa."
+    };
+    return messages[status] || "Status Transaksi Berubah";
+  }
+
+  async paymentReq(data: any, dataMesin: any) {
     const supabase = this.supabaseService.getClient();
     const midtrans = this.midtransService.getClient();
 
     // 1. Validasi Input (Singkat & Padat)
     if (!data.order_id || !data.total || !data.kode || !data.items) {
-      this.client.emit(`transaksi/status`, {
-        success: false,
-        message: "Data Tidak Lengkap.",
-      });
+      await this.sendMqtt(`transaksi/status`, { success: false, message: "Data Tidak Lengkap." }, 0);
       return;
     }
 
@@ -41,21 +65,7 @@ export class TransaksiService {
       item_details: formattedItems,
     };
 
-    // 3. Autentikasi Mesin (Sebelum Charge Midtrans)
-    const { data: dataMesin, error: errorDataMesin } = await supabase
-      .from("mesin")
-      .select("id")
-      .eq("kode", data.kode)
-      .single();
-
-    if (errorDataMesin || !dataMesin) {
-      this.client.emit(`transaksi/status/${data.order_id}`, {
-        success: false, // Perbaikan: tadinya true
-        message: "Autentikasi mesin gagal atau mesin tidak ditemukan.",
-      });
-      return;
-    }
-
+  
     try {
       // 4. Charge Midtrans
       const result = await midtrans.charge(midtransPayload);
@@ -73,8 +83,8 @@ export class TransaksiService {
           d_id: result.transaction_id,
           d_order_id: result.order_id,
           d_mesin_id: dataMesin.id,
-          d_status: "MENUNGGU",
-          d_status_pembayaran: "MENUNGGU",
+          d_status: "pending",
+          d_status_pembayaran: "pending",
           d_total: result.gross_amount,
           d_items: data.items, // Pastikan format JSON di Postgres cocok
         }
@@ -91,11 +101,12 @@ export class TransaksiService {
       }
 
       // 6. BERHASIL - Kirim QR ke Frontend/Mesin
-      this.client.emit(`transaksi/${result.order_id}`, {
+      const payload = {
         success: true,
         message: "Generating QR",
         data: result,
-      });
+      };
+      await this.sendMqtt(`transaksi/status/${result.order_id}`, payload, 0);
 
     } catch (error: any) {
       let finalMessage = error.message || "Internal Server Error";
@@ -115,109 +126,175 @@ export class TransaksiService {
         finalMessage = error.ApiResponse.status_message;
       }
 
-      this.client.emit(`transaksi/status/${data.order_id}`, {
+      const payload = {
         success: false,
         message: finalMessage,
-      });
+      };
 
-      // Opsional: re-throw agar NestJS logs mencatat error ini
-      // throw error; 
+      await this.sendMqtt(`transaksi/status/${data.order_id}`, payload, 0);
     }
   }
     
-    async updateStatusTransaksi(data: any){
-      const supabase = this.supabaseService.getClient();
-      const orderId = data.order_id;
-      const transactionId = data.transaction_id;
-      const transactionStatus = data.transaction_status;
-      const fraudStatus = data.fraud_status;
-      if (fraudStatus === 'accept' || !fraudStatus) {
-        if(transactionStatus != "pending"){
-          const { error: errUpdateStatus } = await supabase.from("transaksi")
-          .update({
-            status_pembayaran: transactionStatus === "settlement" ? "LUNAS" :
-                                transactionStatus === "deny" || transactionStatus === "cancel" ? "DIBATALKAN" :
-                                transactionStatus === "expire" ? "KADALUWARSA" : "MENUNGGU"
-          })
-          .eq("id", transactionId)
-          .eq("order_id", orderId)
-        
-          if(errUpdateStatus) throw new BadRequestException(errUpdateStatus.message);
-
-          this.client.emit(`transaksi/status/${orderId}`, {
-            success:  transactionStatus === "settlement" ? true : false,
-            message:  transactionStatus === "settlement" ? "Pembayaran Berhasil!" :
-                      transactionStatus === "deny" || transactionStatus === "cancel" ? "Pembayaran Dibatalkan" :
-                      transactionStatus === "expire" ? "Pembayaran Kadaluarsa" : "Menunggu Pembayaran"
-          });
-        }
-      }      
-    }
-  async transaksiReqTo(data: any) {
+  async updateStatusTransaksi(data: any) {
     const supabase = this.supabaseService.getClient();
+    const { order_id: orderId, transaction_id: transactionId, transaction_status: transactionStatus, fraud_status: fraudStatus } = data;
+
+    if (transactionStatus === 'pending') {
+      return { success: true, message: 'Status masih pending, abaikan.' };
+    }
+
+    if (fraudStatus && fraudStatus !== 'accept') {
+          this.client.emit(`transaksi/status/${orderId}`, {
+            success: false,
+            message: "Transaksi terdeteksi fraud.",
+            order_id: orderId
+          });
+
+      return;
+    }
+
+    // 2. Mapping Status (Gunakan Else If agar lebih efisien)
+    let statusTransaksi: string;
+    if (transactionStatus === 'settlement' || transactionStatus === 'capture') {
+      statusTransaksi = "process";
+    } else if (['expire', 'cancel', 'deny', 'refund'].includes(transactionStatus)) {
+      statusTransaksi = "cancel";
+    } else {
+      // Jika ada status lain yang tidak kita handle, jangan lanjut update
+      return { success: true, message: 'Status tidak relevan.' };
+    }
+
+    // 3. Update Supabase
+    const { error: errUpdateStatus } = await supabase
+      .from("transaksi")
+      .update({
+        status_pembayaran: transactionStatus,
+        status: statusTransaksi, // Simpan status asli Midtrans untuk audit
+      })
+      .eq("id", transactionId)
+      .eq("order_id", orderId);
+
+    // PENTING: Jika DB gagal, lempar error agar Midtrans melakukan RETRY
+    if (errUpdateStatus) {
+      throw new InternalServerErrorException(`Gagal Update DB: ${errUpdateStatus.message}`);
+    }
+
+    // 4. Kirim ke MQTT
+    // Gunakan 'await' dan 'toPromise' jika ingin memastikan pesan terkirim sebelum return ke Midtrans
+    await this.sendMqtt(`transaksi/status/${orderId}`, { success: true, message: this.getFriendlyMessage(transactionStatus), order_id: orderId }, 1);
+
+    return { success: true, orderId };
+  }
+
+  async completeOrder(orderId: string, dataMesin: any) {
+    const supabase = this.supabaseService.getClient();
+
+    if(!orderId) {
+      await this.sendMqtt(`transaksi/status/${orderId}`, { success: false, message: "Data Tidak Lengkap."}, 0);
+      return;
+    }
+
+    const { data: dataUpdateStatus, error: errorUpdateStatus } = await supabase.from("transaksi")
+        .update({
+          status: "complete"
+        })
+        .eq("order_id", orderId)
+        .eq("mesin_id", dataMesin.id)
+        .select();
+
+    if(errorUpdateStatus) {
+      const payload = {
+        success: false,
+        message: `Gagal menyelesaikan transaksi`
+      };
+      await this.sendMqtt(`transaksi/status/${orderId}`, payload, 1);
+      return;
+    }
+
+        
+    const payload = {
+      success: true,
+      message: "Berhasil menyelesaikan transaksi.",
+      data: dataUpdateStatus
+    };
+    await this.sendMqtt(`transaksi/status/${orderId}`, payload, 1);
+  }
+
+  async cancelOrder( orderId: string, dataMesin: any) {
     const midtrans = this.midtransService.getClient();
+    const supabase = this.supabaseService.getClient();
     
-    const { order_id: orderId, kode: mesinKode, command_req: command } = data;
-
-    // 1. Validasi Input (Simpel)
-    if (!orderId || !mesinKode) {
-      return this.client.emit(`transaksi/status`, {
+    const resultMidtrans = await midtrans.transaction.cancel(orderId).catch(async err => {
+      const payload = {
         success: false,
-        message: "Data Tidak Lengkap."
-      });
+        message: err.ApiResponse?.status_message || err.message || "Gagal membatalkan transaksi."
+      };
+      await this.sendMqtt(`transaksi/status/${orderId}`, payload, 1);
+    });
+
+    const { data: dataUpdateStatus, error: errorUpdateStatus } = await supabase.from("transaksi")
+      .update({
+        status: "cancel",
+        status_pembayaran: resultMidtrans.transaction_status,
+        updated_at: new Date().toISOString()
+      })
+      .eq("order_id", orderId)
+      .eq("mesin_id", dataMesin.id)
+      .select();
+    
+    if(errorUpdateStatus) {
+      const payload = {
+        success: false,
+        message: `Transaksi berhasil dibatalkan, namun sepertinya server sedang mengalami masalah.`
+      };
+      await this.sendMqtt(`transaksi/status/${orderId}`, payload, 1);
+      return;
     }
 
-    // 2. Cek Mesin (Satu kali query)
-    const { data: dataMesin, error: errorDataMesin } = await supabase
-      .from("mesin")
-      .select("id, status")
-      .eq("kode", mesinKode)
-      .single();
+    const payload = {
+      success: true,
+      message: "Berhasil membatalkan transaksi.",
+      data: dataUpdateStatus
+    };
+    await this.sendMqtt(`transaksi/status/${orderId}`, payload, 1);
+  }
 
-    if (errorDataMesin || !dataMesin) {
-      return this.client.emit(`transaksi/status/${orderId}`, {
+  async refundOrder( orderId: string, dataMesin: any, data: any) {
+    const midtrans = this.midtransService.getClient();
+    const supabase = this.supabaseService.getClient();
+    
+    const resultMidtrans = await midtrans.transaction.refund(orderId, data.refund_parameter).catch(async err => {
+      const payload = {
         success: false,
-        message: `Akses Ditolak: Mesin tidak terdaftar.`
-      });
+        message: err.ApiResponse?.status_message || err.message || "Gagal mengembalikan dana."
+      };
+      await this.sendMqtt(`transaksi/status/${orderId}`, payload, 1);
+    });
+
+    const { data: dataUpdateStatus, error: errorUpdateStatus } = await supabase.from("transaksi")
+      .update({
+        status: "cancel",
+        status_pembayaran: resultMidtrans.transaction_status,
+        updated_at: new Date().toISOString()
+      })
+      .eq("order_id", orderId)
+      .eq("mesin_id", dataMesin.id)
+      .select();
+    
+    if(errorUpdateStatus) {
+      const payload = {
+        success: false,
+        message: `dana berhasil dikembalikan, namun sepertinya server sedang mengalami masalah.`
+      };
+      await this.sendMqtt(`transaksi/status/${orderId}`, payload, 1);
+      return;
     }
 
-    if (dataMesin.status !== 'ONLINE') {
-      return this.client.emit(`transaksi/status/${orderId}`, {
-        success: false,
-        message: `Mesin dalam kondisi tidak baik (Status: ${dataMesin.status}).`
-      });
-    }
-
-    // 3. Eksekusi Perintah (Cancel / Refund)
-    try {
-      let result;
-      let successMessage = "";
-
-      if (command === 'cancel') {
-        result = await midtrans.transaction.cancel(orderId);
-        successMessage = "Berhasil membatalkan transaksi.";
-      } else if (command === 'refund') {
-        result = await midtrans.transaction.refund(orderId, data.refund_parameter);
-        successMessage = "Berhasil refund transaksi.";
-      } else {
-        throw new Error("Perintah tidak diketahui sistem.");
-      }
-
-      // Emit Sukses (Satu tempat)
-      return this.client.emit(`transaksi/status/${orderId}`, {
-        success: true,
-        message: successMessage,
-        data: result
-      });
-
-    } catch (error: any) {
-      // Penanganan Error Terpusat
-      const errorMessage = error.ApiResponse?.status_message || error.message || "Gagal memproses permintaan.";
-      
-      this.client.emit(`transaksi/status/${orderId}`, {
-        success: false,
-        message: errorMessage
-      });
-    }
+    const payload = {
+      success: true,
+      message: "dana berhasil dikembalikan.",
+      data: dataUpdateStatus
+    };
+    await this.sendMqtt(`transaksi/status/${orderId}`, payload, 1);
   }
 }

@@ -1,11 +1,13 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { MesinService } from './mesin.service';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/roles/roles.guard';
+import { ClientProxy } from '@nestjs/microservices/client/client-proxy';
+import { MessagePattern, Payload } from '@nestjs/microservices';
 
 @Controller('mesin')
 export class MesinController {
-    constructor(private readonly mesinService: MesinService){}
+    constructor(private readonly mesinService: MesinService, @Inject('HIVE_CLIENT') private client: ClientProxy,){}
     @Get()
     @UseGuards(AuthGuard)
     async findAll(@Query('search') search: string){
@@ -32,5 +34,16 @@ export class MesinController {
       @Body() body: { id: string[] },
     ) {
       return this.mesinService.delete(body);
+    }
+
+    @MessagePattern("mesin/status")
+    async UpdateStatus(@Payload() payload:any) {
+      const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
+      await this.mesinService.updateStatus(data).catch(err => {
+            this.client.emit(`mesin/status/${data.kode}`, {
+                success: false,
+                message: err.message ||"Error update Status" ,
+            });
+        });
     }
 }
