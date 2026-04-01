@@ -17,6 +17,7 @@ async function bootstrap() {
       tls: {
         rejectUnauthorized: false,
       },
+      clientId: `nest_vm_backend_${Math.random().toString(16).substring(2, 10)}`,
       subscribeOptions: {
         qos: 1, // Angka 0, 1, atau 2
       },

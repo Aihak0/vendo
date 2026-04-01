@@ -1,0 +1,80 @@
+Mesin Req Pembayaran topik "/transaksi" QoS 1: 
+{
+	"order_id" : string,
+	"total": number,
+	"kode": uuid,
+	"items": [{
+			"slot_id": uuid,
+			"kode_slot": string,
+			"produk_id": uuid,
+			"nama_produk": string,
+			"qty": number,
+			"subtotal": number,
+			"harga": number
+		}]	
+}
+contoh : 
+{
+	"order_id" : "810a66aa-aba1-4b40-bf67-156b2f290889-10:45-001",
+	"total": 3000,
+	"kode": "810a66aa-aba1-4b40-bf67-156b2f290889",
+	"items": [{
+			"slot_id": "2e4c8fcb-e0fc-4fec-9110-c7742829449f",
+			"kode_slot": "A1",
+			"produk_id": "74dd6cca-39e6-4829-8df9-00ee5c053970",
+			"nama_produk": "kacang telur",
+			"qty": 1,
+			"subtotal": 3000,
+			"harga": 3000
+		}]	
+}
+
+
+data generate qr topiknya gajelas QoS 1: 
+{
+	success: true,
+	message: "Generating QR",
+	data: {
+    		"status_code": "201",
+    		"status_message": "QRIS transaction is created",
+    		"transaction_id": "0d8178e1-c6c7-4ab4-81a6-893be9d924ab",
+    		"order_id": "order03",
+    		"merchant_id": "M099098",
+    		"gross_amount": "275000.00",
+    		"currency": "IDR",
+    		"payment_type": "qris",
+    		"transaction_time": "2020-09-29 11:46:13",
+    		"transaction_status": "pending",
+    "fraud_status": "accept",
+    "acquirer": "gopay",
+    "actions": [
+        {
+            "name": "generate-qr-code",
+            "method": "GET",
+            "url": "https://api.midtrans.com/v2/qris/0d8178e1-c6c7-4ab4-81a6-893be9d924ab/qr-code"
+        },
+				{
+            "name": "generate-qr-code-v2",
+            "method": "GET",
+            "url": "https://api.midtrans.com/v4/qris/A120250718094848HaVD2xS9VKID/qr-code"
+        }
+    ]
+}
+}
+
+data req transaksi cancel atau refund payment topik gajelas QoS 1: {
+	"kode" : uuid,
+	"command_req": "cancel" | "refund"
+	"order_id": uuid
+	"refund_parameter": { 
+		//kosongkan ju=ika tidak refund
+		amount: number,
+        	reason: text,
+	}
+}
+
+data 	
+
+
+tes
+

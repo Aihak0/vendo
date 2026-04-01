@@ -13,9 +13,6 @@ export class TransaksiController {
     @MessagePattern('/transaksi')
     async handlePaymentReq(@Payload() payload: any, @Ctx() context: MqttContext){
         const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
-        console.log("data aja => ", data);
-        console.log("data orderid => ", data.order_id); 
-
         const dataMesin = (context as any).mesin;
         
         await this.transaksiService.paymentReq(data, dataMesin).catch(err => {
