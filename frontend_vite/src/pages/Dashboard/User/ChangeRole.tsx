@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
-import { useAlert } from "../../UiElements/Alerts";
-import { changeRole, deleteProduct } from "../../../services/api";
+import { useAlert } from "../../UiElements/Alert";
+import { changeRole } from "../../../services/api";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle, } from "@headlessui/react";
-import { Shredder, Square, Loader2, Trash, ArrowUp, ArrowDown, Circle } from "lucide-react";
+import { Square, Loader2, ArrowUp, ArrowDown, Circle } from "lucide-react";
 
 interface UserChangeRoleModalProps{
     isOpen: boolean;

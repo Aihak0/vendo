@@ -1,4 +1,4 @@
-import { useState } from "react";
+
 import SectionChip from "./SectionChip";
 import { useReveal } from "./useReveal";
 import { Boxes } from "lucide-react";
@@ -36,12 +36,6 @@ const products = [
 
 function ProductCard({ product, delay }: { product: typeof products[0]; delay: number }) {
   const { ref, visible } = useReveal();
-  const [added, setAdded] = useState(false);
-
-  const handleAdd = () => {
-    setAdded(true);
-    setTimeout(() => setAdded(false), 1500);
-  };
 
   return (
     <div

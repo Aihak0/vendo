@@ -1,7 +1,7 @@
 import SectionChip from "./SectionChip";
 import { useReveal } from "./useReveal";
 
-import { School, Train, Building, TreePalm, ClockArrowUp, Star, GlassWater, Balloon, Calculator } from "lucide-react";
+import { ClockArrowUp, Star, GlassWater, Balloon, Calculator } from "lucide-react";
 
 const machines = [
   {

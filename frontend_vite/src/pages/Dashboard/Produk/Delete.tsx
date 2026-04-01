@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
-import { useAlert } from "../../UiElements/Alerts";
+import { useAlert } from "../../UiElements/Alert";
 import { deleteProduct } from "../../../services/api";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle, } from "@headlessui/react";
 import { Shredder, Square, Loader2, Trash } from "lucide-react";

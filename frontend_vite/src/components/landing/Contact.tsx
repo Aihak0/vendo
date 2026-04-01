@@ -6,7 +6,7 @@ import { useReveal } from "./useReveal";
 import { MapPin, Phone, Mail, AlarmClock, Loader2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { addPesan } from "../../services/api";
-import { useAlert } from "../../pages/UiElements/Alerts";
+import { useAlert } from "../../pages/UiElements/Alert";
 
 const contactItems = [
   { icon: <MapPin className="text-blue-400"/>, label: "Alamat", value: "Jl. Raya Gambirono Jember, Jawa Timur 68154" },

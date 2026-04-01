@@ -1,6 +1,6 @@
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { useState, useRef, useEffect, useCallback, type MouseEvent } from "react";
-import { useAlert } from "../../UiElements/Alerts";
+import { useAlert } from "../../UiElements/Alert";
 import { FolderPen, Square, Loader2, Plus, Locate, Circle, ChevronsDown} from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { addMesin } from "../../../services/api";
@@ -30,23 +30,6 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
     );
 
     const alert = useAlert();
-
-    function validateProductName(name: string) {
-        const cleanName = name.trim();
-
-        if (cleanName.length < 2) return "Nama Terlalu Singkat, jnagan gunakna singkatan";
-        if (cleanName.length > 100) return "Nama terlalu panjang (max. 100 karakter)";
-        if (/[^aeiouy\s]{6,}/i.test(cleanName)) return "Nama terdeteksi sebagai karakter acak";
-
-        const symbolCount = (cleanName.match(/[^a-zA-Z0-9\s]/g) || []).length;
-        if (symbolCount > 3) return "Terlalu banyak simbol, gunakan nama yang wajar";
-
-        // 4. Blacklist Kata Sampah
-        const blacklist = ["test", "testing", "asdf", "nama produk", "coba", "jancok", "bnagsat", "biadab"];
-        if (blacklist.some(word => cleanName.toLowerCase() === word)) return "Masukkan nama produk yang valid";
-
-        return null;
-    }
 
     function resetForm() {
         setNama("");

@@ -1,14 +1,13 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { getProducts } from '../../../services/api';
 import { Plus, Search, Filter, PenLine, Trash, EllipsisVertical} from 'lucide-react';
 import { ProdukAdd } from './Add';
 import { ProdukEdit} from './Edit';
 import { ProdukDelete } from './Delete';
 import { useState } from 'react';
-import CustomDropdown, {type DropdownItem} from '../../../components/ui/dropdown/Dropdown';
+import CustomDropdown from '../../../components/ui/dropdown/Dropdown';
 
 export default function ProductPage() {
-  const queryClient = useQueryClient();
   const [ openModalAdd, setOpenModalAdd] = useState(false);
   const [ openModalEdit, setOpenModalEdit] = useState(false);
   const [ openModalDelete, setOpenModalDelete] = useState(false);
@@ -127,7 +126,7 @@ export default function ProductPage() {
       onClose={() => {
         setOpenModalAdd(false);
       }}
-      fetchProduk={() => {queryClient.invalidateQueries({ queryKey: ['products'] })}}
+  
     />
     <ProdukEdit
       isOpen={openModalEdit}

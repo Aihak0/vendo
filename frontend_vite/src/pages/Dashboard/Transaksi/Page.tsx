@@ -1,8 +1,7 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getProducts, getUser } from '../../../services/api';
-import { Plus, Search, Filter, PenLine, Activity, EllipsisVertical, CircleSlash, ChevronDown, ArrowUp, ArrowDown} from 'lucide-react';
-import {  useEffect, useState } from 'react';
-import CustomDropdown, {type DropdownItem} from '../../../components/ui/dropdown/Dropdown';
+import { useQuery } from '@tanstack/react-query';
+import { getUser } from '../../../services/api';
+import { Search, Filter, Activity,  CircleSlash, ChevronDown, ArrowUp, ArrowDown} from 'lucide-react';
+import { useState } from 'react';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/id';
@@ -12,15 +11,7 @@ import { useAuth } from '../../../context/AuthContext';
 export default function UserPage() {
   dayjs.extend(relativeTime);
   dayjs.locale('id'); 
-  const {user: userLogin, profile, loading} = useAuth(); 
-  const queryClient = useQueryClient();
-  const [ openModalAdd, setOpenModalAdd] = useState(false);
-  const [ openModalEdit, setOpenModalEdit] = useState(false);
-  const [ openModalDelete, setOpenModalDelete] = useState(false);
-  const [ dataEdit, setDataEdit] = useState();
-  const [ dataChange, setDataChange] = useState<{data: any, changeToRole: string} | null>(null);
-  const [ openModalConfirmChangeRole, setopenModalConfirmChangeRole] = useState(false);
-  const [ dataActivateorDeactivateUser, setDataDeactivate] = useState<any[]>([]);
+  const { profile } = useAuth(); 
   const [inputValue, setInputValue] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
@@ -100,16 +91,10 @@ export default function UserPage() {
             {selected.length > 0 && (
               <div className="flex items-center gap-2">
                 <span className="text-sm text-slate-500">{selected.length} dipilih</span>
-                <button onClick={() => {
-                          setDataDeactivate(selected);
-                          setOpenModalDelete(true);
-                        }} 
+                <button
                         className="text-sm text-red-500 hover:text-red-700 font-medium transition">Hapus</button>
               </div>
             )}
-            <button onClick={() => setOpenModalAdd(true)} className="p-2 bg-green-600 rounded-lg hover:bg-green-700 transition text-white">
-              <Plus size={24} />
-            </button>
             <button className="flex items-center gap-2 px-4 py-2 bg-zinc-100 border  rounded-lg">
               <Filter size={18} />
               <span>semua</span>
@@ -211,17 +196,7 @@ export default function UserPage() {
                       { profile.user_id !== row.user_id && (
 
                         <div className="flex items-center gap-1">
-                          <button onClick={() => {
-                            setDataEdit(row);
-                            setOpenModalEdit(true);
-
-                          }} className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition">
-                            <PenLine size={14}/>
-                          </button>
-                          <button onClick={() => {
-                                            setDataDeactivate([{user_id: row.user_id, is_active: row.is_active}]);
-                                            setOpenModalDelete(true);
-                                          }}
+                          <button
                                   className={`p-1.5 rounded-lg text-slate-400 ${ row.is_active ? `hover:text-red-500 hover:bg-red-50` : `hover:text-emerald-500 hover:bg-emerald-100/60`}  transition`}>
                             { row.is_active ? (
                               <CircleSlash size={14}/>
@@ -230,11 +205,7 @@ export default function UserPage() {
                             )}
                           </button>
                           {((row.role === "ADMIN" && Number(user.metadata.totalDataAdmin) > 1) ||(row.role === "TEKNISI"))&& (
-                            <button onClick={() => {
-                                        const targetRole = row.role === "TEKNISI" ? "ADMIN" : "TEKNISI";
-                                        setDataChange({ data: row, changeToRole: targetRole });
-                                        setopenModalConfirmChangeRole(true);
-                                      }}
+                            <button
                                     className={`p-1.5 rounded-lg text-slate-400 ${row.role === "TEKNISI" ? `hover:text-green-600 hover:bg-green-100/60` : `hover:text-yellow-600 hover:bg-yellow-100/60`}  transition`}>
                               {row.role === "TEKNISI" ? <ArrowUp size={14}/> : <ArrowDown size={14}/>}
                             </button>

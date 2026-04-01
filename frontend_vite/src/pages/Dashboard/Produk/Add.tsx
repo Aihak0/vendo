@@ -1,17 +1,16 @@
-import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
+import { Dialog, DialogBackdrop, DialogPanel } from "@headlessui/react";
 import { useState, useRef, type ChangeEvent, type DragEvent } from "react";
-import { useAlert } from "../../UiElements/Alerts";
-import { FolderPen, Square, Loader2, Check, StepForward, StepBack, BanknoteX, Database} from "lucide-react";
+import { useAlert } from "../../UiElements/Alert";
+import { FolderPen, Square, Loader2, Check} from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { addProduct } from "../../../services/api";
 
 interface ProdukAddModalProps {
     isOpen: boolean;
     onClose: () => void;
-    fetchProduk: () => void;
 }
 
-export function ProdukAdd ({isOpen, onClose, fetchProduk} : ProdukAddModalProps){
+export function ProdukAdd ({isOpen, onClose} : ProdukAddModalProps){
     const queryClient = useQueryClient();
     const [isLoading, setLoading] = useState(false);
 
@@ -283,7 +282,7 @@ export function ProdukAdd ({isOpen, onClose, fetchProduk} : ProdukAddModalProps)
                                                     placeholder="Nama"
                                                 
                                                 />
-                                            
+                                                { error.nama && <p className="text-red-500 text-xs mt-1">{error.nama}</p>}
                                             </div>
                                         </div>
                                         <div className="mb-0">

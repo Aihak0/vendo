@@ -1,15 +1,13 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getMesin, getProducts } from '../../../services/api';
+import { useQuery } from '@tanstack/react-query';
+import { getMesin } from '../../../services/api';
 import { Plus, Search, Filter, PenLine, Trash, Table} from 'lucide-react';
 import { MesinAdd } from './Add';
 import { ProdukEdit} from './Edit';
 import { MesinDelete } from './Delete';
 import { MesinSlot } from './Slots';
 import { useState } from 'react';
-import CustomDropdown, {type DropdownItem} from '../../../components/ui/dropdown/Dropdown';
 
 export default function MesinPage() {
-  const queryClient = useQueryClient();
   const [ openModalAdd, setOpenModalAdd] = useState(false);
   const [ openModalEdit, setOpenModalEdit] = useState(false);
   const [ openModalDelete, setOpenModalDelete] = useState(false);

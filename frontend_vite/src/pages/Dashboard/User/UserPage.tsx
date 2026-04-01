@@ -1,11 +1,10 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getProducts, getUser } from '../../../services/api';
-import { Plus, Search, Filter, PenLine, Activity, EllipsisVertical, CircleSlash, ChevronDown, ArrowUp, ArrowDown} from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { getUser } from '../../../services/api';
+import { Plus, Search, Filter, PenLine, Activity, CircleSlash, ChevronDown, ArrowUp, ArrowDown} from 'lucide-react';
 import { ProdukAdd } from './Add';
 import { ProdukEdit} from './Edit';
 import { ProdukDelete } from './Delete';
-import {  useEffect, useState } from 'react';
-import CustomDropdown, {type DropdownItem} from '../../../components/ui/dropdown/Dropdown';
+import { useState } from 'react';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/id';
@@ -16,8 +15,7 @@ import { useAuth } from '../../../context/AuthContext';
 export default function UserPage() {
   dayjs.extend(relativeTime);
   dayjs.locale('id'); 
-  const {user: userLogin, profile, loading} = useAuth(); 
-  const queryClient = useQueryClient();
+  const {profile} = useAuth(); 
   const [ openModalAdd, setOpenModalAdd] = useState(false);
   const [ openModalEdit, setOpenModalEdit] = useState(false);
   const [ openModalDelete, setOpenModalDelete] = useState(false);

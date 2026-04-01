@@ -1,7 +1,7 @@
 import { Dialog, DialogBackdrop, DialogPanel } from "@headlessui/react";
-import { useState, useRef, useEffect, type ChangeEvent, type DragEvent } from "react";
-import { useAlert } from "../../UiElements/Alerts";
-import { FolderPen, Square, Loader2, Check } from "lucide-react";
+import { useState, useRef, useEffect, type DragEvent } from "react";
+import { useAlert } from "../../UiElements/Alert";
+import { FolderPen, Loader2, Check } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateProduct } from "../../../services/api"; // Ganti ke updateProduct
 

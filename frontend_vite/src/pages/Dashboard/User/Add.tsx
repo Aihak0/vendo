@@ -1,6 +1,6 @@
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { useState } from "react";
-import { useAlert } from "../../UiElements/Alerts";
+import { useAlert } from "../../UiElements/Alert";
 import { FolderPen, Square, Loader2, Circle, Plus, ChevronDown, UserRoundKey} from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {  addUser } from "../../../services/api";

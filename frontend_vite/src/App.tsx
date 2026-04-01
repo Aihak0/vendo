@@ -3,7 +3,6 @@ import Home from "./pages/Dashboard/Home";
 import { AppSidebar } from "./layout/AppSidebar"; 
 import { Header } from "./layout/AppHeader"; 
 import SignInForm from "./components/auth/SignInForm";
-import { DiscAlbum } from "lucide-react";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ProductPage from "./pages/Dashboard/Produk/Produk";

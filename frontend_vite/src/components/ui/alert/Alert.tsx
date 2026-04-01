@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { CheckCircle2, XCircle, AlertTriangle, Info, X } from "lucide-react";
-import { useAlertProvider, type AlertOptions, type AlertVariant } from "../../../pages/UiElements/Alerts";
+import { useAlertProvider, type AlertOptions, type AlertVariant } from "../../../pages/UiElements/Alert";
 
 // ─── Config per variant ───────────────────────────────────────────────────────
 const VARIANTS: Record<

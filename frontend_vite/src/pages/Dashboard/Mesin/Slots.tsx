@@ -5,7 +5,7 @@ import React, { useEffect, useState } from "react";
 import { getProducts } from '../../../services/api';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateMesin } from "../../../services/api"; 
-import { useAlert } from "../../UiElements/Alerts";
+import { useAlert } from "../../UiElements/Alert";
 
 export function MesinSlot({isOpen, onClose, dataSlot}: MesinSlotModalProps){
     const [isLoading, setLoading] = useState(false);
