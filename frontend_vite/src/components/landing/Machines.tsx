@@ -95,9 +95,12 @@ export default function Machines() {
           }}
         >
           <SectionChip><Calculator size={14}/> Mesin Kami</SectionChip>
-          <h2 className="text-4xl font-black text-slate-900 leading-tight tracking-tight">
+          <h2 className="text-3xl font-black text-slate-900 leading-tight tracking-tight">
             Unit Mesin yang Tersedia
           </h2>
+          <p className="text-slate-400 py-3 px-1">
+            Setiap unit mesin kami menyediakan berbagai produk yang dapat dibeli langsung menggunakan metode pembayaran digital seperti QRIS dan e-wallet.
+          </p>
         </div>
 
         <div className="grid sm:grid-cols-2 gap-5">
