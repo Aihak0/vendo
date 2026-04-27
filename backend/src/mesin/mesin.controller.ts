@@ -1,22 +1,29 @@
-import { Body, Controller, Get, Inject, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, ParseBoolPipe, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { MesinService } from './mesin.service';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/roles/roles.guard';
 import { ClientProxy } from '@nestjs/microservices/client/client-proxy';
-import { MessagePattern, Payload } from '@nestjs/microservices';
+import { Ctx, MessagePattern, MqttContext, NatsContext, Payload } from '@nestjs/microservices';
 
 @Controller('mesin')
 export class MesinController {
     constructor(private readonly mesinService: MesinService, @Inject('HIVE_CLIENT') private client: ClientProxy,){}
     @Get()
     @UseGuards(AuthGuard)
-    async findAll(@Query('search') search: string){
-      return await this.mesinService.findAll(search);
+    async findAll(@Query('page', ParseIntPipe) page: number = 1, @Query('limit', ParseIntPipe) limit: number = 10, @Query('sortAsc', new ParseBoolPipe({ optional: true })) sortAsc: boolean, @Query('sortKey') sortKey?: string,  @Query('search') search?: string, @Query('status') status?: string){
+      return await this.mesinService.findAll(page, limit, sortAsc, sortKey, search, status);
     }
+
+    @Get("logs")
+    @UseGuards(AuthGuard, RolesGuard)
+    async findAllLogs(@Query('page') page: number, @Query('limit') limit: number, @Query('search') search: string){
+      return await this.mesinService.findAllLogs(page, limit, search);
+    }
+
     @Post('add')
     async add(
       @Body() body: any, 
-    ) {
+    ) { 
       return this.mesinService.add(body);
     }
 
@@ -36,14 +43,20 @@ export class MesinController {
       return this.mesinService.delete(body);
     }
 
-    @MessagePattern("mesin/status")
-    async UpdateStatus(@Payload() payload:any) {
-      const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
-      await this.mesinService.updateStatus(data).catch(err => {
-            this.client.emit(`mesin/status/${data.kode}`, {
-                success: false,
-                message: err.message ||"Error update Status" ,
-            });
-        });
+    @Post('update-stock') // Sesuai dengan api.ts tadi
+    async updateStock(
+      @Body() body: { mesin_id: string, dataSlot: any[] },
+    ) {
+      return this.mesinService.updateStockSlot(body.mesin_id, body.dataSlot);
+    }
+
+    // @UseGuards(MqttAuthGuard)
+    @MessagePattern("mesin/+/status")
+    async UpdateStatus(@Payload() payload:any, @Ctx() context: MqttContext) {
+      const topic = context.getTopic(); // Ini adalah "mesin/123/status"
+      const kodeMesin = topic.split('/')[1];
+
+      console.log("Received MQTT message for mesin/status => ", payload);
+      return this.mesinService.updateStatus(payload, kodeMesin);
     }
 }

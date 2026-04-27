@@ -1,18 +1,22 @@
 // produk.controller.ts
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UploadedFile, UseInterceptors, ParseBoolPipe, UseGuards } from '@nestjs/common';
 import { ProdukService } from './produk.service';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { AuthGuard } from 'src/auth/auth.guard';
+import { RolesGuard } from 'src/roles/roles.guard';
 
 @Controller('produk')
 export class ProdukController {
   constructor(private readonly produkService: ProdukService) {}
 
   @Get()
-  async findAll(@Query('search') search: string) {
-    return this.produkService.findAll(search);
+  // @UseGuards(AuthGuard, RolesGuard)
+  async findAll(@Query('page', new ParseIntPipe({ optional: true })) page?: number, @Query('limit', new ParseIntPipe({ optional: true })) limit?: number, @Query("sortAsc", new ParseBoolPipe({optional: true})) sortAsc?: boolean, @Query("sortKey") sortKey?: string, @Query('search') search?: string, @Query("isActive") isActive?: string) {
+    return this.produkService.findAll(page, limit, sortAsc, sortKey, search, isActive);
   }
 
   @Post('add')
+  @UseGuards(AuthGuard, RolesGuard)
   @UseInterceptors(FileInterceptor('image')) // 'image' adalah key dari frontend
   async add(
     @Body() body: any, 
@@ -21,10 +25,12 @@ export class ProdukController {
     // Kirim body dan file ke service
     return this.produkService.add(body, file);
   }
+
   @Patch('edit/:id')
+  @UseGuards(AuthGuard, RolesGuard)
   @UseInterceptors(FileInterceptor('image'))
   async update(
-    @Param('id') id: string,
+    @Param('id') id: string, 
     @Body() body: any, 
     @UploadedFile() file: Express.Multer.File //
   ){
@@ -32,10 +38,12 @@ export class ProdukController {
   }
    // produk.controller.ts
 
-  @Post('delete') // Sesuai dengan api.ts tadi
-  async delete(
-    @Body() body: { id: string[] },
+  @Post('activate-or-deactivate') // Sesuai dengan api.ts tadi
+  @UseGuards(AuthGuard, RolesGuard)
+  async activateANDDeactivate(
+    @Body() body:any[],
   ) {
-    return this.produkService.delete(body);
+    return this.produkService.activateANDDeactivate(body);
   }
+
 }

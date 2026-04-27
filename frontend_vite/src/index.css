@@ -1,5 +1,6 @@
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap")
-layer(base);
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
+
+@source "../node_modules/flowbite-datepicker";
 
 @import "tailwindcss";
 
@@ -789,4 +790,9 @@ span.flatpickr-weekday,
 
 .simplebar-scrollbar.simplebar-visible:before {
   @apply opacity-100;
+}
+
+.gm-style,
+.gm-style * {
+  cursor: pointer !important;
 }

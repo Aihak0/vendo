@@ -47,49 +47,49 @@ export function ProdukDelete({ isOpen, onClose, dataDeactivate}: ProdukDeleteMod
  return (
     <>
         <Dialog open={ isOpen } onClose={onClose} className="relative z-50">
-                <DialogBackdrop
-                        transition
-                        className="fixed inset-0 bg-zinc-900/50 transition-opacity data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in"
-                        />
+                 <DialogBackdrop
+                    transition
+                    className="fixed inset-0 bg-zinc-300/50 dark:bg-zinc-900/50 transition-opacity data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in"
+                    />
 
-                        <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+                    <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
                         <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
                             <DialogPanel
-                            transition
-                            className="relative transform overflow-hidden rounded-lg bg-white dark:bg-zinc-800 text-left shadow-xl outline -outline-offset-1 outline-white/10 transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in sm:my-8 sm:w-full sm:max-w-150 data-closed:sm:translate-y-0 data-closed:sm:scale-95"
-                            >
-                            <div className="bg-whitedark:bg-zinc-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                                <div className="sm:flex sm:items-start">
-                                <div className={`mx-auto flex size-12 shrink-0 items-center justify-center rounded-full ${ adaYangAktif && adaYangNonAktif ? `bg-amber-500/10` : adaYangAktif ? `bg-rose-500/10` : `bg-green-500/10` } sm:mx-0 sm:size-10`}>
-                                    { adaYangAktif && adaYangNonAktif ? <TrendingUpDown aria-hidden="true" className="size-6 text-amber-400" /> : adaYangAktif ? <CircleOff aria-hidden="true" className="size-6 text-rose-400" /> : <Activity aria-hidden="true" className="size-6 text-green-400" /> }
-                                    
-                                </div>
-                                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                                    <DialogTitle as="h3" className="text-base font-semibold dark:text-white">
-                                        { adaYangAktif && "Nonaktifkan " }
-                                        { adaYangAktif && adaYangNonAktif && "Dan " }
-                                        { adaYangNonAktif && "Aktifkan " }
-                                        User
-                                    </DialogTitle>
-                                    <div className="mt-2">
-                                        <p className="text-sm text-gray-400">
-                                            { adaYangAktif && `Nonaktifkan ${totalAktif} ` }
-                                            { adaYangAktif && adaYangNonAktif && "Dan " }
-                                            { adaYangNonAktif &&`Aktifkan ${ totalNonAktif } ` }
-                                             User?
-                                        </p>
+                                transition
+                                className="relative p-6 transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 text-left shadow-xl outline outline-white/10 transition-all h-fit w-120"
+                                >
+                                
+                                    <div className="sm:flex sm:items-start mb-6">
+                                        <div className={`mx-auto flex size-12 shrink-0 items-center justify-center rounded-full ${ adaYangAktif && adaYangNonAktif ? `bg-amber-500/10` : adaYangAktif ? `bg-rose-500/10` : `bg-green-500/10` } sm:mx-0 sm:size-10`}>
+                                            { adaYangAktif && adaYangNonAktif ? <TrendingUpDown aria-hidden="true" className="size-6 text-amber-400" /> : adaYangAktif ? <CircleOff aria-hidden="true" className="size-6 text-rose-400" /> : <Activity aria-hidden="true" className="size-6 text-green-400" /> }
+                                        
+                                        </div>
+                                        <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                            <DialogTitle as="h3" className="text-base font-semibold dark:text-white">
+                                                { adaYangAktif && "Nonaktifkan " }
+                                                { adaYangAktif && adaYangNonAktif && "Dan " }
+                                                { adaYangNonAktif && "Aktifkan " }
+                                                User
+                                            </DialogTitle>
+                                            <div className="mt-2">
+                                                <p className="text-sm text-gray-400">
+                                                    { adaYangAktif && `Nonaktifkan ${totalAktif} ` }
+                                                    { adaYangAktif && adaYangNonAktif && "Dan " }
+                                                    { adaYangNonAktif &&`Aktifkan ${ totalNonAktif } ` }
+                                                    User?
+                                                </p>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                                </div>
-                            </div>
-                            <div>
-                                <div className="p-6 space-y-5">
+                        
+             
+                                <div className=" space-y-5">
                                     <div className="flex">
                                         <button
                                             type="button"
                                             data-autofocus
                                             onClick={() => {onClose()}}
-                                            className="flex-1 flex items-center justify-center text-center py-2 px-4 bg-gray-500 text-white font-medium hover:bg-gray-600 cursor-pointer transition-colors rounded-l"
+                                            className="flex-1 flex items-center justify-center text-center py-2 px-4 bg-gray-500 dark:bg-slate-600 text-white dark:text-gray-300 font-medium hover:bg-gray-600 dark:hover:bg-slate-700 cursor-pointer transition-colors rounded-l-lg"
                                             >
                                             <Square/>
                                         </button>
@@ -114,7 +114,7 @@ export function ProdukDelete({ isOpen, onClose, dataDeactivate}: ProdukDeleteMod
                                         </button>
                                     </div>
                                 </div>
-                            </div>
+                
                             </DialogPanel>
                         </div>
                         </div>

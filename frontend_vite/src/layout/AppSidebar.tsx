@@ -1,19 +1,22 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { LayoutDashboard, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, Apple, Calculator, UserRound, ArrowUp01, Receipt } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from 'react-router-dom';
+
 
 export function AppSidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const { logout } = useAuth();
   const navigate = useNavigate();
 
+
   const handlelogout = async () => {
     await logout();
     navigate("/login");
   }
 
+  const pathnames = location.pathname.split("/").filter(Boolean).at(-1);
   return (
     <>
       {isOpen && (
@@ -26,67 +29,66 @@ export function AppSidebar() {
         onMouseEnter={()=> setIsOpen(true)}
         onMouseLeave={() => setIsOpen(false)}
         className={`
-         fixed inset-y-0 left-0 z-40 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-300
-          bg-white shadow-lg flex flex-col dark:bg-zinc-800
+         fixed inset-y-0 left-0 z-40 bg-white dark:bg-slate-950 border-r border-gray-200 dark:border-gray-700 transition-all duration-300
+         shadow-lg flex flex-col
           transition-all duration-400 ease-in-out
-          ${isOpen ? 'w-64' : 'w-16 lg:w-19'}
+          ${isOpen ? 'w-64' : 'w-16 lg:w-18'}
           lg:translate-x-0
         `}
         style={{ top: '64px' }}
       >
-        {/* Header */}
-        <div className="h-16 flex items-center px-4">
-          <a href="#" className="">
-              <span className="sr-only">Your Company</span>
-              <img src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=500" alt="" className="h-8 w-auto" />
-          </a>
-
-        </div>
-        <hr className="mx-4 my-0 border-gray-300" />
-
+  
         {/* Nav */}
         <nav className="flex-1 px-3 py-5 space-y-1.5">
           <NavItem 
-            href={`/`}
+            href={`/dashboard`}
             icon={<LayoutDashboard size={22} />} 
+            isActive={pathnames === "dashboard"}
             label="Dashboard" 
             isOpen={isOpen} 
           />
           <NavItem 
             href={`/produk`}
-            icon={<LayoutDashboard size={22} />} 
+            icon={<Apple size={22} />} 
+            isActive={pathnames === "produk"}
             label="Produk" 
             isOpen={isOpen} 
           />
           <NavItem 
             href={`/mesin`}
-            icon={<LayoutDashboard size={22} />} 
+            icon={<Calculator size={22} />} 
+            isActive={pathnames === "mesin"}
             label="Mesin" 
             isOpen={isOpen} 
           />
           <NavItem 
             href={`/user`}
-            icon={<LayoutDashboard size={22} />} 
+            icon={<UserRound size={22} />} 
+            isActive={pathnames === "user"}
             label="User" 
             isOpen={isOpen} 
           />
+          <hr className=" my-0 border-gray-300 dark:border-gray-700 my-3" />
           <NavItem 
             href={`/transaksi`}
-            icon={<LayoutDashboard size={22} />} 
+            icon={<Receipt size={22} />} 
+            isActive={pathnames === "transaksi"}
             label="Transaksi" 
             isOpen={isOpen} 
           />
           <NavItem 
             href={`/pergerakan-stock`}
-            icon={<LayoutDashboard size={22} />} 
+            icon={<ArrowUp01 size={22} />} 
+            isActive={pathnames === "pergerakan-stock"}
             label="Pergerakan Stock" 
             isOpen={isOpen} 
           />
          
         </nav>
-           <hr className="mx-4 my-0 border-gray-300" />
+        
         {/* Bottom actions */}
         <div className="p-3 space-y-1.5">
+         <hr className=" my-0 border-gray-300 dark:border-gray-700 my-3" />
           <NavItem 
             href="#" 
             icon={<Settings size={22} />} 
@@ -132,21 +134,24 @@ function NavItem({
   icon,
   label,
   isOpen,
-  color = " hover:bg-gray-100/80 dark:hover:bg-zinc-700",
+  isActive = false,
+  color = " hover:bg-gray-100/80 dark:hover:bg-slate-800",
 
 }: {
   href: string;
   icon: React.ReactNode;
   label: string;
   isOpen: boolean;
+  isActive?: boolean;
   color?: string;
 }) {
   return (
     <Link
       to={href}
       className={`
-        group flex items-center rounded-lg px-3 py-3 transition-all duration-300 
-        ${color}
+        group flex items-center rounded-lg px-3 py-3 transition-all duration-300 text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-300
+        ${isActive ? 'bg-gray-100/80 text-indigo-600 dark:bg-slate-800 dark:text-indigo-300' : ''}
+        ${ !isActive && color}
         ${isOpen ? 'justify-start gap-3' : ''}
       `}
       title={!isOpen ? label : undefined}   // tooltip saat collapsed

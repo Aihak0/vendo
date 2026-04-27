@@ -37,30 +37,30 @@ export function MesinDelete({ isOpen, onClose, dataDelete}: MesinDeleteModalProp
     };
  return (
     <>
-        <Dialog open={ isOpen } onClose={onClose} className="relative z-10">
+        <Dialog open={ isOpen } onClose={onClose} className="relative z-50">
                 <DialogBackdrop
                         transition
                         className="fixed inset-0 bg-zinc-900/50 transition-opacity data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in"
                         />
 
                         <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
-                        <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                        <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0 ">
                             <DialogPanel
                             transition
-                            className="relative transform overflow-hidden rounded-lg bg-zinc-800 text-left shadow-xl outline -outline-offset-1 outline-white/10 transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in sm:my-8 sm:w-full sm:max-w-150 data-closed:sm:translate-y-0 data-closed:sm:scale-95"
+                            className="relative transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 text-left shadow-xl outline -outline-offset-1 outline-white/10 dark:outline-blue-950 transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in sm:my-8 sm:w-full sm:max-w-100 data-closed:sm:translate-y-0 data-closed:sm:scale-95"
                             >
-                            <div className="bg-zinc-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                            <div className="bg-white dark:bg-slate-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                                 <div className="sm:flex sm:items-start">
                                     <div className="mx-auto flex size-12 shrink-0 items-center justify-center rounded-full bg-rose-500/10 sm:mx-0 sm:size-10">
-                                        <Shredder aria-hidden="true" className="size-6 text-rose-400" />
+                                        <Shredder aria-hidden="true" className="size-6 text-red-500" />
                                     </div>
                                     <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                                    <DialogTitle as="h3" className="text-base font-semibold text-white">
-                                        Hapus Bisnis
+                                    <DialogTitle as="h3" className="text-base font-semibold dark:text-gray-200">
+                                        Hapus { dataDelete?.length } Mesin?
                                     </DialogTitle>
                                     <div className="mt-2">
                                     <p className="text-sm text-gray-400">
-                                        Hapus { dataDelete?.length } Produk/Jasa?
+                                        Mesin berikut akan dihapus permanen.
                                 
                                     </p>
                                     </div>
@@ -74,7 +74,7 @@ export function MesinDelete({ isOpen, onClose, dataDelete}: MesinDeleteModalProp
                                         type="button"
                                         data-autofocus
                                         onClick={() => onClose()}
-                                        className="flex-1 flex items-center justify-center text-center py-3 px-4 bg-zinc-600 text-white rounded-l font-medium hover:bg-zinc-700 cursor-pointer transition-colors"
+                                        className="flex-1 flex items-center justify-center text-center py-2 px-4 bg-gray-400 dark:bg-slate-700 text-white rounded-l-lg font-medium hover:bg-gray-500 dark:hover:bg-slate-800 cursor-pointer transition-colors border dark:border-slate-700 border-gray-400"
                                         >
                                         <Square/>
                                     </button>
@@ -86,10 +86,10 @@ export function MesinDelete({ isOpen, onClose, dataDelete}: MesinDeleteModalProp
                                                 handleDelete(e);
                                         }}
                                         disabled={ isLoading}
-                                        className={`flex-1 flex items-center justify-center py-3 px-4 bg-blue-600 text-white font-medium rounded-r transition-colors
+                                        className={`flex-1 flex items-center justify-center py-2 px-4 bg-blue-600 text-white font-medium rounded-r-lg transition-colors border dark:border-red-700 border-red-500
                                                     ${isLoading
                                                         ? 'bg-red-900 cursor-not-allowed' // Style saat tombol mati
-                                                        : 'bg-red-600 hover:bg-red-700 cursor-pointer' // Style saat tombol aktif
+                                                        : 'bg-red-500 dark:bg-red-700 hover:bg-red-600 dark:hover:bg-red-800 cursor-pointer ' // Style saat tombol aktif
                                                     } text-white`}
                                         >
                                             {isLoading ? (

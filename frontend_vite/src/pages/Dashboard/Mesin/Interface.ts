@@ -26,6 +26,14 @@ export interface Mesin {
     id: string; // Tambahkan ID untuk keperluan update
     nama: string;
     lokasi: string;
+    latitude: number;
+    longitude: number;
+    desa: string;
+    kecamatan: string;
+    kabupaten: string;
+    provinsi: string;
+    negara: string;
+    kodePos: string;
     row_slots: number;
     column_slots: number;
     slot: SlotData[]

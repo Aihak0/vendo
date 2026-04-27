@@ -1,6 +1,5 @@
-Mesin Req Pembayaran topik "/transaksi" QoS 1: 
+Mesin Req Pembayaran topik "transaksi/data" QoS 1: 
 {
-	"order_id" : string,
 	"total": number,
 	"kode": uuid,
 	"items": [{
@@ -15,7 +14,6 @@ Mesin Req Pembayaran topik "/transaksi" QoS 1:
 }
 contoh : 
 {
-	"order_id" : "810a66aa-aba1-4b40-bf67-156b2f290889-10:45-001",
 	"total": 3000,
 	"kode": "810a66aa-aba1-4b40-bf67-156b2f290889",
 	"items": [{
@@ -29,52 +27,77 @@ contoh :
 		}]	
 }
 
-
 data generate qr topiknya gajelas QoS 1: 
 {
-	success: true,
-	message: "Generating QR",
-	data: {
-    		"status_code": "201",
-    		"status_message": "QRIS transaction is created",
-    		"transaction_id": "0d8178e1-c6c7-4ab4-81a6-893be9d924ab",
-    		"order_id": "order03",
-    		"merchant_id": "M099098",
-    		"gross_amount": "275000.00",
-    		"currency": "IDR",
-    		"payment_type": "qris",
-    		"transaction_time": "2020-09-29 11:46:13",
-    		"transaction_status": "pending",
-    "fraud_status": "accept",
-    "acquirer": "gopay",
-    "actions": [
-        {
-            "name": "generate-qr-code",
-            "method": "GET",
-            "url": "https://api.midtrans.com/v2/qris/0d8178e1-c6c7-4ab4-81a6-893be9d924ab/qr-code"
-        },
+	"pattern":"generate/qr",
+	"data": { 
+		"success":true,
+		"message":"Generating QR",
+		"data": {
+			"status_code":"201",
+			"status_message":"Qris transaction is created",
+			"transaction_id":"2317ba40-d257-4b4d-bc9e-41d9d79ae2fc",
+			"order_id":"810a66aa-1776946480254-7",
+			"merchant_id":"G681380285",
+			"gross_amount":"3000.00",
+			"currency":"IDR",
+			"payment_type":"qris",
+			"transaction_time":"2026-04-23 19:14:50",
+			"transaction_status":"pending",
+			"fraud_status":"accept",
+			"actions":[
 				{
-            "name": "generate-qr-code-v2",
-            "method": "GET",
-            "url": "https://api.midtrans.com/v4/qris/A120250718094848HaVD2xS9VKID/qr-code"
-        }
-    ]
-}
-}
-
-data req transaksi cancel atau refund payment topik gajelas QoS 1: {
-	"kode" : uuid,
-	"command_req": "cancel" | "refund"
-	"order_id": uuid
-	"refund_parameter": { 
-		//kosongkan ju=ika tidak refund
-		amount: number,
-        	reason: text,
+					"name":"generate-qr-code",
+					"method":"GET",
+					"url":"https://api.sandbox.midtrans.com/v2/qris/2317ba40-d257-4b4d-bc9e-41d9d79ae2fc/qr-code"
+				},
+				{
+					"name":"generate-qr-code-v2",
+					"method":"GET",
+					"url":"https://merchants-app.sbx.midtrans.com/v4/qris/gopay/A120260423121450tU4w7dgxPuID/qr-code"
+				}
+			],
+			"acquirer":"gopay",
+			"qr_string":"00020101021226620014COM.GO-JEK.WWW011993600914368138028520210G6813802850303UKE51440014ID.CO.QRIS.WWW0215AID0554501650910303UKE520459975303360540430005802ID5908HakoCorp6009BULUKUMBA61059257462395028A120260423121450tU4w7dgxPuID0703A016304DEA9",
+			"expiry_time":"2026-04-23 19:29:50"
+		}
 	}
 }
 
-data 	
+data req transaksi cancel atau refund payment topik transaksi/cancel or /refund QoS 0: 
+{
+        "order_id" : uuid,
+        "total": number,
+        "kode": uuid,
+        "items": [{
+                        "slot_id": uuid,
+                        "kode_slot": string,
+                        "produk_id": uuid,
+                        "nama_produk": string,
+                        "qty": number,
+                        "subtotal": number,
+                        "harga": number
+        }]    
+        "status":"refund" | "cancel" | "complete"      
+}
 
+data req complete transaksi topik /transaksi/complete/order_id Qos 1: {
+	"kode": uuid,
+	"order_id": uuid
+}
 
-tes
+status mesin topik mesin/status 
+{
+	"kode": uuid,
+	"status": "online" | "offline" | "maintenance" 
 
+}
+
+contoh : 
+
+{
+	"kode": "810a66aa-aba1-4b40-bf67-156b2f290889",
+	"status": "offline"
+}
+
+testing qr https://simulator.sandbox.midtrans.com/v2/qris/ndex

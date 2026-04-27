@@ -21,7 +21,7 @@ export class AuthGuard implements CanActivate {
     try {
       console.log('🌐 Takon tok...');
       const { data: { user }, error } = await supabase.auth.getUser(token);
-
+      
       if (error || !user) throw new UnauthorizedException('Sesi tidak valid');
 
       this.userCache.set(token, {
@@ -32,7 +32,7 @@ export class AuthGuard implements CanActivate {
       request.user = user;
       return true;
     } catch (e) {
-      return false;
+      throw e;
     }
    
   }

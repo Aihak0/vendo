@@ -1,7 +1,7 @@
-import { Dialog, DialogBackdrop, DialogPanel } from "@headlessui/react";
+import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { useState, useRef, type ChangeEvent, type DragEvent } from "react";
 import { useAlert } from "../../UiElements/Alert";
-import { FolderPen, Square, Loader2, Check} from "lucide-react";
+import { FolderPen, Square, Loader2, Plus, Circle, CloudUpload} from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { addProduct } from "../../../services/api";
 
@@ -92,14 +92,21 @@ export function ProdukAdd ({isOpen, onClose} : ProdukAddModalProps){
 
     function resetForm() {
         setNama("");
+        setFile(null);
+        setHarga(null);
+        const errors = {
+            nama: "",
+
+        };
+        setError(errors);
     }
 
       const mutation = useMutation({
         mutationFn: addProduct,
-        onSuccess: () => {
+        onSuccess: (s: any) => {
             // 1. Refresh data
             queryClient.invalidateQueries({ queryKey: ['products'] });
-            console.log("Data berhasil masuk!");
+            alert.success(s.message, {title: "Berhasil"})
             
             // 2. Tutup Modal di sini (Ganti 'setOpen' dengan fungsi tutup modal kamu)
             onClose(); 
@@ -108,7 +115,7 @@ export function ProdukAdd ({isOpen, onClose} : ProdukAddModalProps){
             resetForm(); 
         },
         onError: (err: any) => {
-            console.error("Gagal simpan:", err.message);
+            alert.error(`${err.message}`, { title: "Error" });
             // Bisa tambahkan toast error di sini
         },
         onSettled: () => {
@@ -119,9 +126,13 @@ export function ProdukAdd ({isOpen, onClose} : ProdukAddModalProps){
 
         async function handleAdd(e: React.FormEvent) {
         e.preventDefault();
+
+        console.log("jajajajja")
         
         // Validasi awal
         if (!file) return;
+        console.log("ga kereturn")
+
         const errorNama = validateProductName(nama);
 
         if (errorNama) {
@@ -142,48 +153,43 @@ export function ProdukAdd ({isOpen, onClose} : ProdukAddModalProps){
         }
 
     return(
-        <Dialog open={isOpen} onClose={onClose} className="relative z-10">
-                    <DialogBackdrop
+        <Dialog open={isOpen} onClose={onClose} className="relative z-50">
+                <DialogBackdrop
                         transition
                         className="fixed inset-0 bg-zinc-300/50 dark:bg-zinc-900/50 transition-opacity data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in"
                         />
 
+                   
                         <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
-                        <div className="flex min-h-full items-end justify-center p-6 text-center sm:items-center sm:p-0">
-                            <DialogPanel
-                            transition
-                            className="relative transform overflow-hidden rounded-sm bg-gray-100 text-left shadow-xl outline -outline-offset-1 outline-white/10 transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in sm:my-20 sm:w-full lg:max-w-150 data-closed:sm:translate-y-0 data-closed:sm:scale-95"
-                            >
-                            <div className=" px-4 pt-5 pb-4 sm:p-6 sm:pb-4 border-b">
-                                <div className="sm:flex sm:items-start">
-                                <div className="mx-auto flex size-12 shrink-0 items-center justify-center rounded-full bg-lime-500/10 sm:mx-0 sm:size-10">
-                                    {/* <FilePlusCorner aria-hidden="true" className="size-6 text-lime-400" /> */}
-                                </div>
-                                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                                   
-                                    <div className="mt-2">
-                                    <p className="text-sm text-gray-400">
-                                         "Tambah"
-                                        
-                                    </p>
+                            <div className="flex min-h-full items-end justify-center p-6 text-center sm:items-center sm:p-0">
+                                 <DialogPanel className="flex relative p-6 transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 text-left shadow-xl outline outline-white/10 transition-all h-fit w-fit ">
+                                
+                                 <div className="flex flex-col w-fit px-1 min-w-md mb-3">
+                                    <div className="sm:flex sm:items-start">
+                                        <div className="mx-auto flex size-12 shrink-0 items-center justify-center rounded-full bg-green-500/10 sm:mx-0 sm:size-10">
+                                            <Plus aria-hidden="true" className="size-6 text-green-400" />
+                                        </div>
+
+                                        <div className="flex items-stretch h-full ml-3">
+                                            <DialogTitle className=" flex items-center text-base dark:text-gray-300 font-semibold">
+                                                Tambahkan Produk
+                                            </DialogTitle>
+                                        </div>
                                     </div>
-                                </div>
-                                </div>
-                            </div>
-                            <div>
-                                <form onSubmit={handleAdd} className="py-2 px-4 space-y-5">
-                                        
-                                        <div className="w-full max-w-md mx-auto">
+                                    <form onSubmit={handleAdd} className="py-2 space-y-5 min-h-55 relative text-base dark:text-gray-400">
+                                            
+                                        <div className="w-full max-w-md mb-2">
+                                            <label  className="block mb-2.5 text-sm font-medium text-xs">Foto Produk</label>
                                             {!previewUrl ? (
                                                 // Dropzone kosong
                                                 <div
-                                                className={`
+                                                    className={`
                                                     relative flex flex-col items-center justify-center w-full h-64 
                                                     border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200
                                                     ${
                                                     isDragging
-                                                        ? 'border-blue-500 bg-blue-50/60 shadow-lg scale-[1.02]'
-                                                        : 'border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-gray-400'
+                                                        ? 'border-blue-500 dark:border-blue-300 bg-blue-50/60 dark:bg-slate-800 shadow-lg scale-[1.02]'
+                                                        : 'border-gray-300 dark:border-blue-900 bg-gray-50 dark:bg-slate-900 hover:bg-gray-100 dark:hover:bg-slate-950 hover:border-gray-400 dark:hover:border-blue-800'
                                                     }
                                                 `}
                                                 onDragOver={handleDragOver}
@@ -200,24 +206,10 @@ export function ProdukAdd ({isOpen, onClose} : ProdukAddModalProps){
                                                     onChange={handleChange}
                                                 />
 
-                                                <svg
-                                                    className={`w-12 h-12 mb-4 transition-colors ${
-                                                    isDragging ? 'text-blue-500' : 'text-gray-400'
-                                                    }`}
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                >
-                                                    <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                                                    />
-                                                </svg>
-
-                                                <p className="mb-2 text-sm font-medium text-gray-700">
+                                                <CloudUpload className={`w-12 h-12 mb-4 transition-colors ${
+                                                                                            isDragging ? 'text-blue-500' : 'text-gray-400'
+                                                                                            }`}/>
+                                                <p className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">
                                                     {isDragging ? (
                                                     <span className="text-blue-600">Lepaskan gambar di sini</span>
                                                     ) : (
@@ -227,13 +219,13 @@ export function ProdukAdd ({isOpen, onClose} : ProdukAddModalProps){
                                                     )}
                                                 </p>
 
-                                                <p className="text-xs text-gray-500">
+                                                <p className="text-xs text-gray-500 dark:text-gray-600">
                                                     PNG, JPG, GIF, WEBP (maks. 10MB disarankan)
                                                 </p>
                                                 </div>
                                             ) : (
                                                 // Tampilan preview
-                                                <div className="relative w-full h-64 rounded-xl overflow-hidden border border-gray-200 shadow-sm group">
+                                                <div className="relative w-full h-64 rounded-xl overflow-hidden border border-gray-200 dark:border-blue-800 shadow-sm group">
                                                 <img
                                                     src={previewUrl}
                                                     alt="Preview"
@@ -244,7 +236,7 @@ export function ProdukAdd ({isOpen, onClose} : ProdukAddModalProps){
                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                     <button
                                                     onClick={removeImage}
-                                                    className="px-5 py-2.5 bg-white text-red-600 rounded-lg font-medium hover:bg-red-50 active:bg-red-100 transition-colors shadow-md"
+                                                    className="px-5 py-2.5 bg-white dark:bg-red-950 text-red-600 dark:text-red-500 rounded-lg font-medium hover:bg-red-50 dark:hover:bg-red-900 active:bg-red-100 transition-colors shadow-md"
                                                     >
                                                     Hapus Gambar
                                                     </button>
@@ -253,7 +245,7 @@ export function ProdukAdd ({isOpen, onClose} : ProdukAddModalProps){
                                                 {/* Tombol ganti gambar (pojok kanan atas) */}
                                                 <label
                                                     htmlFor="dropzone-file"
-                                                    className="absolute top-3 right-3 px-3 py-1.5 bg-white/90 hover:bg-white text-gray-700 text-sm rounded-md cursor-pointer shadow-sm transition-colors"
+                                                    className="absolute top-3 right-3 px-3 py-1.5 bg-white/90 dark:bg-gray-900 hover:bg-white text-gray-700 dark:text-gray-300 text-sm rounded-md cursor-pointer shadow-sm transition-colors"
                                                 >
                                                     Ganti
                                                     <input
@@ -267,74 +259,72 @@ export function ProdukAdd ({isOpen, onClose} : ProdukAddModalProps){
                                                 </label>
                                                 </div>
                                             )}
-                                            </div>
-
-                                        <div className="mb-0">
-                                            <label  className="block mb-2.5 text-sm font-medium text-xs">Nama</label>
-                                            <div className="relative mb-3 border-x border-gray-400">
-                                                <FolderPen className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                                <input
-                                                    type="text"
-                                                    value={nama}
-                                                    onChange={(e) => 
-                                                        setNama(e.target.value)}
-                                                    className={`w-full pl-11 pr-4 py-2 border border-transparent placeholder:text-stone-400 focus-visible:ring-transparent text-sm  focus-visible:outline-none bg-gray-200 `}
-                                                    placeholder="Nama"
-                                                
-                                                />
-                                                { error.nama && <p className="text-red-500 text-xs mt-1">{error.nama}</p>}
-                                            </div>
                                         </div>
-                                        <div className="mb-0">
-                                            <label  className="block mb-2.5 text-sm font-medium text-xs">Harga</label>
-                                            <div className="relative mb-3 border-x border-gray-400">
-                                                <FolderPen className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                                <input
-                                                    type="number"
-                                                    value={harga ?? ""}
-                                                    onChange={(e) => {
-                                                        const val = e.target.value;
-                                                        setHarga(val === '' ? null : Number(val));
-                                                    }}
-                                                    className={`w-full pl-11 pr-4 py-2 border border-transparent placeholder:text-stone-400 focus-visible:ring-transparent text-sm  focus-visible:outline-none bg-gray-200 `}
-                                                    placeholder="Harga"
-                                                
-                                                />
-                                            
+
+                                            <div className="mb-2">
+                                                <label  className="block mb-2.5 text-sm font-medium text-xs">Nama</label>
+                                                <div className="relative mb-1">
+                                                    <FolderPen className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                                    <input
+                                                        type="text"
+                                                        value={nama}
+                                                        onChange={(e) => 
+                                                            setNama(e.target.value)}
+                                                        className={`min-w-0 w-full bg-blue-50/50 dark:bg-slate-900  outline-none focus:ring-2 focus:ring-blue-50 dark:focus:ring-slate-500/20 transition-all ${error.nama ? `border-red-300 focus:border-red-400 focus:ring-red-100` : `border border-blue-100 dark:border-slate-700 rounded pl-10 px-4 py-2 text-sm dark:text-gray-300 placeholder:text-gray-400 dark:placeholder:text-gray-500`} `}
+                                                        placeholder="Masukkan Nama "
+                                                    
+                                                    />
+                                                </div>
+                                                {error.nama && <p className="text-red-500 text-sm text-shadow-md px-1">{error.nama}</p>}
                                             </div>
-                                        </div>
-                                        <div className="flex">
-            
-                                        <button
-                                            type="button"
-                                            data-autofocus
-                                            onClick={() => onClose()}
-                                            className="flex-1 flex items-center justify-center text-center py-3 px-4 bg-zinc-600 text-white font-medium hover:bg-zinc-700 cursor-pointer transition-colors"
-                                            >
-                                            <Square/>
-                                        </button>
-                                        <button
-                                        type="submit"
+                                            <div className="mb-6">
+                                                <label  className="block mb-2.5 text-sm font-medium text-xs">Harga</label>
+                                                <div className="relative mb-1">
+                                                    <FolderPen className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                                    <input
+                                                        type="number"
+                                                        value={harga ?? ""}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            setHarga(val === '' ? null : Number(val));
+                                                        }}
+                                                        className={`min-w-0 w-full bg-blue-50/50 dark:bg-slate-900  outline-none focus:ring-2 focus:ring-blue-50 dark:focus:ring-slate-500/20 transition-all border border-blue-100 dark:border-slate-700 rounded pl-10 px-4 py-2 text-sm dark:text-gray-300 placeholder:text-gray-400 dark:placeholder:text-gray-500`}
+                                                        placeholder="Harga"
+                                                    
+                                                    />
+                                                
+                                                </div>
+                                            </div>
+                                             <div className="flex bottom-0 w-full">
+                                                <button
+                                                    type="button"
+                                                    data-autofocus
+                                                    onClick={() => {onClose(); resetForm();}}
+                                                    className="flex-1 flex items-center justify-center text-center py-2 px-4 bg-gray-500 dark:bg-slate-600 text-white dark:text-gray-300 font-medium hover:bg-gray-600 dark:hover:bg-slate-700 cursor-pointer transition-colors rounded-l-lg"
+                                                    >
+                                                    <Square/>
+                                                </button>
+                                                <button
+                                                    type="submit"
 
-                                        disabled={isLoading}
-                                        className={`flex-1 flex items-center justify-center py-3 px-4 bg-blue-600 text-white font-medium rounded-r-lg transition-colors
-                                                    ${ isLoading
-                                                        ? 'bg-blue-900 cursor-not-allowed' // Style saat tombol mati
-                                                        : 'bg-blue-600 hover:bg-blue-700 cursor-pointer' // Style saat tombol aktif
-                                                    } text-white`}
-                                        >
-                                            {isLoading ? (
-                                                 <Loader2 size={24} className="animate-spin" />
-                                            )  : (
-                                               <Check/>
-                                            )}
-                                    </button>
-
-                                    </div>
-                                </form>
+                                                    disabled={isLoading}
+                                                    className={`flex-1 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed py-2 px-4 text-white font-medium rounded-r-lg transition-colors
+                                                        ${ isLoading
+                                                            ? 'bg-blue-900 dark:bg-blue-950 cursor-not-allowed' // Style saat tombol mati
+                                                            : 'bg-blue-600 dark:bg-blue-800 hover:bg-blue-700 cursor-pointer dark:hover:bg-blue-900' // Style saat tombol aktif
+                                                        } text-white`}
+                                                    >
+                                                    {isLoading ? (
+                                                        <Loader2 size={24} className="animate-spin" />
+                                                    )  : (
+                                                    <Circle/>
+                                                    )}
+                                                </button>
+                                            </div>
+                                    </form>
+                                </div>
+                                </DialogPanel>
                             </div>
-                            </DialogPanel>
-                        </div>
                         </div>
                     </Dialog>
     );

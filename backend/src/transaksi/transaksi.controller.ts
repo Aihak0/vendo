@@ -1,7 +1,10 @@
-import { Body, Controller, HttpCode, HttpStatus, Inject, Post, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Inject, ParseBoolPipe, ParseIntPipe, Post, Query, Res, UseGuards } from '@nestjs/common';
 import { TransaksiService } from './transaksi.service';
 import { ClientProxy, Ctx, MessagePattern, MqttContext, Payload } from '@nestjs/microservices';
 import { MqttAuthGuard } from 'src/mqtt-auth/mqtt-auth.guard';
+import { AuthGuard } from 'src/auth/auth.guard';
+import { RolesGuard } from 'src/roles/roles.guard';
+import { Timestamp } from 'node_modules/rxjs/dist/types';
 
 @Controller('transaksi')
 export class TransaksiController {
@@ -10,53 +13,56 @@ export class TransaksiController {
     ){}
 
     @UseGuards(MqttAuthGuard)
-    @MessagePattern('/transaksi')
+    @MessagePattern('transaksi/data', { qos: 1 })
     async handlePaymentReq(@Payload() payload: any, @Ctx() context: MqttContext){
         const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
         const dataMesin = (context as any).mesin;
         
         await this.transaksiService.paymentReq(data, dataMesin).catch(err => {
-            this.client.emit(`transaksi/status/${data.order_id}`, {
+            this.client.emit(`generate/qr`, {
                 success: false,
-                message: err.message ||"Error Payment Req" ,
+                message: err.message || "Error Payment Req" ,
+                data: {}
+
             });
         });
     }
 
     @UseGuards(MqttAuthGuard)
-    @MessagePattern('/transaksi/complete/+')
+    @MessagePattern('transaksi/complete')
     async completeOrder(@Payload() payload: any, @Ctx() context: MqttContext){
         const dataMesin = (context as any).mesin;
+        const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
 
-        const topic = context.getTopic(); 
-        const orderIdFromTopic = topic.split('/').pop();
-
-        await this.transaksiService.completeOrder(orderIdFromTopic ?? "", dataMesin).catch(err => {
-            this.client.emit(`transaksi/status/${orderIdFromTopic}`, {
+        await this.transaksiService.completeOrder(data, dataMesin).catch(err => {
+            this.client.emit(`transaksi/status`, {
                 success: false,
                 message: err.message ||"Error Complete Order" ,
+                order_id: data.order_id,
+                statusTransaksi: 'failed'
             });
         });
-    }
+    } 
 
     @UseGuards(MqttAuthGuard)
-    @MessagePattern('/transaksi/cancel/+')
+    @MessagePattern('transaksi/cancel')
     async cancelOrder(@Payload() payload: any, @Ctx() context: MqttContext){
         const dataMesin = (context as any).mesin;
 
-        const topic = context.getTopic(); 
-        const orderIdFromTopic = topic.split('/').pop();
+        const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
 
-        await this.transaksiService.cancelOrder(orderIdFromTopic ?? "", dataMesin).catch(err => {
-            this.client.emit(`transaksi/status/${orderIdFromTopic}`, {
+        await this.transaksiService.cancelOrder(data, dataMesin).catch(err => {
+            this.client.emit(`transaksi/status`, {
                 success: false,
-                message: err.message ||"Error Cancel Order" ,
+                message: err.message || "Error Cancel Order" ,
+                order_id: data.order_id,
+                statusTransaksi: 'failed'
             });
         });
     }
 
     @UseGuards(MqttAuthGuard)
-    @MessagePattern('/transaksi/refund/+')
+    @MessagePattern('transaksi/refund')
     async refundOrder(@Payload() payload: any, @Ctx() context: MqttContext){
         const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
         const dataMesin = (context as any).mesin;
@@ -64,11 +70,14 @@ export class TransaksiController {
         const topic = context.getTopic(); 
         const orderIdFromTopic = topic.split('/').pop();
 
-        await this.transaksiService.refundOrder(orderIdFromTopic ?? "", dataMesin, data).catch(err => {
-            this.client.emit(`transaksi/status/${orderIdFromTopic}`, {
+        await this.transaksiService.refundOrder(data, dataMesin).catch(err => {
+            this.client.emit(`transaksi/status`, {
                 success: false,
-                message: err.message ||"Error Refund Order" ,
+                message: err.message || "Error Refund Order" ,
+                order_id: data.order_id,
+                statusTransaksi: 'failed'
             });
+
         });
     }
     
@@ -80,6 +89,19 @@ export class TransaksiController {
         
         await this.transaksiService.updateStatusTransaksi(data);
         return { message: 'Webhook processed successfully' };
+    }
+
+    
+    @Get()
+    @UseGuards(AuthGuard, RolesGuard)
+    async findAll(@Query('page', ParseIntPipe) page: number = 1, @Query('limit', ParseIntPipe) limit: number = 10, @Query("sortAsc", new ParseBoolPipe({optional: true})) sortAsc: boolean, @Query("sortKey") sortKey: string, @Query('search') search: string,  @Query('statusTransaksi') statusTransaksi: string,  @Query('statusPembayaran') statusPembayaran: string){
+        return await this.transaksiService.findAll(page, limit, sortAsc, sortKey, search, statusTransaksi, statusPembayaran);
+    }
+
+    @Get('summary')
+    @UseGuards(AuthGuard, RolesGuard)
+    async getSummary(@Query("filter") filter: string, @Query("dari") dari: Date, @Query("sampai") sampai: Date){
+        return await this.transaksiService.getSummary(filter, dari, sampai);
     }
 
 }

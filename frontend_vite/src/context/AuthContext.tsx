@@ -23,6 +23,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<any | null>(null);
 
   const fetchProfile = async (userId: string) => {
+    
     const { data, error } = await supabase
       .from('user_profiles') // Pastikan nama tabel sesuai
       .select('*') // Kolom yang ingin diambil
@@ -37,22 +38,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     // Ambil sesi awal
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async({ data: { session } }) => {
       if (session?.user) {
         setUser(session.user);
-        fetchProfile(session.user.id);
+        await fetchProfile(session.user.id);
+        setLoading(false);
       }
-      setLoading(false);
+      
+     
 
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser(session.user);
-        fetchProfile(session.user.id);
-      } else {
-        setUser(null);
-        setProfile(null); // Reset profile saat logout
-      }
-      setLoading(false);
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+          if (session?.user) {
+            setUser(session.user);
+            await fetchProfile(session.user.id);
+          } else {
+            setUser(null);
+            setProfile(null); // Reset profile saat logout
+          }
+        setLoading(false);
       });
 
       return () => subscription.unsubscribe();
@@ -73,7 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-if (loading) return <div>Memuat Sesi...</div>;
+// if (loading) return <div>Memuat Sesi...</div>;
 return (
   <AuthContext.Provider value={{ user, login, logout, loading, profile }}>
     {children}

@@ -1,12 +1,12 @@
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { useState, useRef, useEffect, useCallback, type MouseEvent } from "react";
 import { useAlert } from "../../UiElements/Alert";
-import { FolderPen, Square, Loader2, Plus, Locate, Circle, ChevronsDown} from "lucide-react";
+import { FolderPen, Square, Loader2, Plus, Circle, ChevronsDown, Minus} from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { addMesin } from "../../../services/api";
 import { type DragState, type SlotRow, type MesinAddModalProps } from "./Interface";
 import { colToLetter, getDragState } from "./proses";
-
+import MapPicker from "../../../components/MapsPicker";
 
 
 
@@ -18,11 +18,44 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
     const [, setTick] = useState<number>(0);
     // const [error, setError] = useState<Record<string, any>>({});
     const [nama, setNama] = useState("");
-    const [lokasi, setLokasi] = useState("");
-
+    
     const [rows, setRows] = useState<number>();
-
+    
     const [slot, setSlot] = useState<SlotRow[]>([]);
+    
+    const [latitude, setLatitude] = useState<number>(-6.2000);
+    const [longitude, setLongitude] = useState<number>(106.8166);
+    const [lokasi, setLokasi] = useState("");
+    const [desa, setDesa] = useState("");
+    const [kecamatan, setKecamatan] = useState("");
+    const [kabupaten, setKabupaten] = useState("");
+    const [provinsi, setProvinsi] = useState("");
+    const [negara, setNegara] = useState("");
+    const [kodePos, setKodePos] = useState("");
+    const [isMapReady, setIsMapReady] = useState(true);
+    const provinces = [
+        "Aceh", "Sumatera Utara", "Sumatera Barat", "Riau", "Kepulauan Riau",
+        "Jambi", "Sumatera Selatan", "Bangka Belitung", "Bengkulu", "Lampung",
+        "DKI Jakarta", "Jawa Barat", "Banten", "Jawa Tengah", "DI Yogyakarta",
+        "Jawa Timur", "Bali", "Nusa Tenggara Barat", "Nusa Tenggara Timur",
+        "Kalimantan Barat", "Kalimantan Tengah", "Kalimantan Selatan",
+        "Kalimantan Timur", "Kalimantan Utara", "Sulawesi Utara", "Gorontalo",
+        "Sulawesi Tengah", "Sulawesi Barat", "Sulawesi Selatan", "Sulawesi Tenggara",
+        "Maluku", "Maluku Utara", "Papua Barat", "Papua", "Papua Selatan",
+        "Papua Tengah", "Papua Pegunungan",
+    ];
+
+    const previewAddress = [
+        desa,
+        kecamatan,
+        kabupaten,
+        provinsi,
+        negara,
+        kodePos,
+    ]
+    .filter(Boolean)
+    .join(", ");
+
     
     const totalSlot = slot.reduce((sum, row) => sum + row.col.length, 0);
     const [statusSlot, setStatusSlot] = useState<string>(
@@ -35,6 +68,18 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
         setNama("");
         setLokasi("");
     }
+    const handleLocationChange = (coords: any) => {
+        console.log("Lokasi diterima di Halaman Utama:", coords);
+        setLatitude(coords.lat);
+        setLongitude(coords.lng);
+        setLokasi(coords.address);
+        setDesa(coords.desa);
+        setKecamatan(coords.kecamatan);
+        setKabupaten(coords.kabupaten);
+        setProvinsi(coords.provinsi);
+        setNegara(coords.negara);
+        setKodePos(coords.kodePos);
+    };
 
     const handleSetRows = (newRowCount: number) => {
         setRows(newRowCount);
@@ -117,6 +162,19 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
         }));
     };
 
+    const handleRemoveColumnFromRow = (rnum: number) => {
+        setSlot(prev => prev.map(row => {
+            if (row.row_number !== rnum) return row;
+            if (row.col.length <= 1) return row; 
+            
+            const col = row.col;
+            const lastCol = col.length - 1;
+            const trimmed = col.slice(0, lastCol);
+
+            return { ...row, col: trimmed };
+        }))
+    }
+
     const handleAddColumnToRow = (rnum: number) => {
         // 1. Cek apakah baris (row) tersebut sudah ada di dalam state
         const rowExists = slot.find((item) => item.row_number === rnum);
@@ -189,7 +247,29 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
             );
         
             // 2. hapus (mergeCount) kolom dari akhir row
-            const trimmed = updatedCols.slice(0, updatedCols.length - mergeCount);
+            // 1. Identifikasi data yang akan dibuang (target slice)
+            const startIndexSlice = updatedCols.length - mergeCount;
+            const toRemove = updatedCols.slice(startIndexSlice);
+
+            // 2. Hitung total span dari data yang akan dibuang
+            // Jika ada elemen dengan span 2, maka totalSpan akan lebih besar dari jumlah elemen
+            const extraSpan = toRemove.reduce((acc, curr) => acc + ((curr.span || 1) - 1), 0);
+
+            // 3. Ambil data terakhir yang tetap bertahan (sebelum titik potong)
+            let finalCols = [...updatedCols];
+            const lastRemainingIndex = startIndexSlice - 1;
+
+            if (lastRemainingIndex >= 0 && extraSpan > 0) {
+                // Pindahkan "sisa" span ke elemen terakhir yang tidak terhapus
+                finalCols[lastRemainingIndex] = {
+                    ...finalCols[lastRemainingIndex],
+                    span: (finalCols[lastRemainingIndex].span || 1) + extraSpan,
+                    gabungan: [finalCols[lastRemainingIndex].kode, finalCols[startIndexSlice].kode ]
+                };
+            }
+
+            // 4. Baru lakukan slice
+            const trimmed = finalCols.slice(0, startIndexSlice);
         
             return { ...row, col: trimmed };
         }));
@@ -241,10 +321,17 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
 
         const payload = {
             nama: nama,
-            lokasi: lokasi,
             rows: rows, 
             total_slot: totalSlot, 
-            slots: slot
+            slots: slot,
+            latitude: latitude,
+            longitude: longitude,
+            desa: desa,
+            kecamatan: kecamatan,
+            kabupaten: kabupaten,
+            provinsi: provinsi,
+            negara: negara,
+            kode_pos: kodePos
         };
         mutation.mutate(payload);
     }
@@ -254,29 +341,29 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
     },[]);
 
     return(
-        <Dialog open={isOpen} onClose={onClose} className="relative z-10">
+        <Dialog open={isOpen} onClose={onClose} className="relative z-50">
             <DialogBackdrop className="fixed inset-0 bg-zinc-900/50 transition-opacity"/>
             <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
                 <div className="flex min-h-full justify-center p-4 items-center sm:p-0">
                 
-                    <DialogPanel className="flex relative p-6 transform overflow-hidden rounded-lg bg-gray-100 text-left shadow-xl outline outline-white/10 transition-all h-fit w-fit ">
-                        
+                    <DialogPanel className="flex relative p-6 transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 text-left shadow-xl outline outline-blue-50 dark:outline-blue-950 transition-all h-fit mt-10 mb-10">
+                         
                         {/* Form Section */}
-                        <div className="flex flex-col w-fit px-1 min-w-md">
+                        <div className="flex flex-col px-1 w-[460px] shrink-0 ">
                             <div className="sm:flex sm:items-start">
                                 <div className="mx-auto flex size-12 shrink-0 items-center justify-center rounded-full bg-green-500/10 sm:mx-0 sm:size-10">
                                     <Plus aria-hidden="true" className="size-6 text-green-400" />
                                 </div>
 
                                 <div className="flex items-stretch h-full ml-3">
-                                    <DialogTitle className=" flex items-center text-base font-semibold">
+                                    <DialogTitle className=" flex items-center text-base dark:text-gray-300 font-semibold">
                                         Tambahkan Mesin
                                     </DialogTitle>
                                 </div>
                             </div>
-                            <form onSubmit={handleAdd} className="py-2 space-y-5 min-h-55 relative">
+                            <form onSubmit={handleAdd} className="py-2 space-y-5 min-h-55 relative text-base dark:text-gray-400">
                                 <div className="mb-0">
-                                    <label  className="block mb-2.5 text-sm font-medium text-xs">Nama Mesin</label>
+                                    <label  className="block mb-2.5 text-sm text-xs">Nama Mesin</label>
                                     <div className="relative mb-3 ">
                                         <FolderPen className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                         <input
@@ -284,7 +371,7 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
                                             value={nama}
                                             onChange={(e) => 
                                                 setNama(e.target.value)}
-                                            className={`shadow-xs w-full pl-11 pr-4 py-2 border border-transparent placeholder:text-stone-400 focus-visible:ring-transparent text-sm  focus-visible:outline-none bg-gray-200 rounded`}
+                                            className={`min-w-0 w-full bg-blue-50/50 dark:bg-slate-900 border border-blue-100 dark:border-slate-700 rounded pl-10 px-4 py-2 text-sm dark:text-gray-300 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:ring-2 focus:ring-blue-50 dark:focus:ring-slate-500/20 transition-all`}
                                             placeholder="Masukkan Nama "
                                         
                                         />
@@ -292,21 +379,133 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
                                     </div>
                                 </div> 
                                 
-                                <div className="mb-0">
-                                    <label  className="block mb-2.5 text-sm font-medium text-xs">Lokasi</label>
-                                    <div className="relative mb-3">
-                                        <Locate className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                        <input
-                                            type="text"
-                                            value={lokasi}
-                                            onChange={(e) => 
-                                                setLokasi(e.target.value)}
-                                            className={`shadow-xs w-full pl-11 pr-4 py-2 border border-transparent placeholder:text-stone-400 focus-visible:ring-transparent text-sm  focus-visible:outline-none bg-gray-200 rounded`}
-                                            placeholder="Lokasi Mesin"
+                                <div className="mb-0 w-full mb-13">
+                                   
+                                    { lokasi && (
+                                        <>
+                                            <div className="grid grid-cols-2 gap-4 min-w-0 mb-3 ">
+                                                <div>
+                                                    <label className="block mb-2.5 text-sm text-xs">
+                                                        Desa / Kelurahan
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        name="desa"
+                                                        value={desa}
+                                                        onChange={(e) => setDesa(e.target.value)}
+                                                        placeholder="cth. Sukamaju"
+                                                        className="min-w-0 w-full bg-blue-50/50 dark:bg-slate-900 border border-blue-100 dark:border-slate-700 rounded px-4 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:ring-2 focus:ring-blue-50 dark:focus:ring-slate-500/20 transition-all"
+                                                        />
+                                                </div>
+                                                <div>
+                                                    <label className="block mb-2.5 text-sm text-xs">
+                                                        Kecamatan
+                                                    </label>
+                                                    <input
+                                                    type="text"
+                                                    name="kecamatan"
+                                                    value={kecamatan}
+                                                    onChange={(e) => setKecamatan(e.target.value)}
+                                                    placeholder="cth. Cibeunying"
+                                                    className="min-w-0 w-full bg-blue-50/50 dark:bg-slate-900 border border-blue-100 dark:border-slate-700 rounded px-4 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:ring-2 focus:ring-blue-50 dark:focus:ring-slate-500/20 transition-all"
+                                                    />
+                                                </div>
+                                            </div>
+                                
+                                            <div className="grid grid-cols-2 gap-4 min-w-0 mb-3">
+                                                <div>
+                                                    <label className="block mb-2.5 text-sm text-xs">
+                                                        Kabupaten / Kota
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        name="kabupaten"
+                                                        value={kabupaten}
+                                                        onChange={(e) => setKabupaten(e.target.value)}
+                                                        placeholder="cth. Bandung"
+                                                        className="min-w-0 w-full bg-blue-50/50 dark:bg-slate-900 border border-blue-100 dark:border-slate-700 rounded px-4 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:ring-2 focus:ring-blue-50 dark:focus:ring-slate-500/20 transition-all"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block mb-2.5 text-sm text-xs">
+                                                    Provinsi
+                                                    </label>
+                                                    <select
+                                                    name="provinsi"
+                                                    value={provinsi}
+                                                    onChange={(e) => setProvinsi(e.target.value)}
+                                                    className="min-w-0 w-full bg-blue-50/50 dark:bg-slate-900 border border-blue-100 dark:border-slate-700 rounded px-4 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:ring-2 focus:ring-blue-50 dark:focus:ring-slate-500/20 transition-all"
+                                                    >
+                                                    <option value="" className="text-slate-500 ">-- Pilih Provinsi --</option>
+                                                    {provinces.map((p) => (
+                                                        <option key={p} value={p}>
+                                                        {p}
+                                                        </option>
+                                                    ))}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                
+                                            {/* Divider */}
+                                            <div className="flex items-center gap-3 py-1 mb-2">
+                                                <div className="flex-1 h-px bg-blue-400 dark:bg-slate-600" />
+                                                    <span className="block text-sm text-xs text-blue-400 dark:text-slate-500">
+                                                        Info Tambahan
+                                                    </span>
+                                                <div className="flex-1 h-px bg-blue-400 dark:bg-slate-600" />
+                                            </div>
+                                
+                                            {/* Negara & Kode Pos */}
+                                            <div className="grid grid-cols-2 gap-4 min-w-0 mb-3">
+                                                <div>
+                                                    <label className="block mb-2.5 text-sm text-xs">
+                                                    Negara
+                                                    </label>
+                                                    <input
+                                                    type="text"
+                                                    name="negara"
+                                                    value={negara}
+                                                    onChange={(e) => setNegara(e.target.value)}
+                                                    placeholder="cth. Indonesia"
+                                                    className="min-w-0 w-full bg-blue-50/50 dark:bg-slate-900 border border-blue-100 dark:border-slate-700 rounded px-4 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:ring-2 focus:ring-blue-50 dark:focus:ring-slate-500/20 transition-all"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block mb-2.5 text-sm text-xs">
+                                                    Kode Pos
+                                                    </label>
+                                                    <input
+                                                    type="text"
+                                                    name="kodePos"
+                                                    value={kodePos}
+                                                    onChange={(e) => setKodePos(e.target.value)}
+                                                    placeholder="cth. 40132"
+                                                    maxLength={5}
+                                                    inputMode="numeric"
+                                                    className="min-w-0 w-full bg-blue-50/50 dark:bg-slate-900 border border-blue-100 dark:border-slate-700 rounded px-4 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:ring-2 focus:ring-blue-50 dark:focus:ring-slate-500/20 transition-all"
+                                                    />
+                                                </div>
+                                            </div>
+            
+                                            {previewAddress && (
+                                                <div className=" bg-white dark:bg-slate-900 border-3 border-blue-100 dark:border-blue-950 rounded px-4 py-3 min-w-0 overflow-hidden mb-3">
+                                                    <p className="text-xs font-bold tracking-widest text-slate-400 mb-1">
+                                                        Pratinjau Alamat
+                                                    </p>
+                                                    <p className="text-sm  leading-relaxed break-words">
+                                                        {previewAddress}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </>
                                         
-                                        />
-                                    
-                                    </div>
+                            
+                                    )}
+                                    { !isMapReady &&
+                                    <label  className="block mb-2.5 text-sm font-medium text-xs text-slate-400">Klik dimanapun di map untuk set lokasi mesin</label>
+                                     }
+                                    <MapPicker onLocationSelected={handleLocationChange} onLoadingChange={(loading) => setIsMapReady(loading)}/>
+            
                                 </div>
                                 
                                 <div className="flex absolute bottom-0 w-full">
@@ -315,7 +514,7 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
                                         type="button"
                                         data-autofocus
                                         onClick={() => onClose()}
-                                        className="flex-1 flex items-center justify-center text-center py-2 px-4 bg-gray-500 text-white font-medium hover:bg-gray-600 cursor-pointer transition-colors rounded-l"
+                                        className="flex-1 flex items-center justify-center text-center py-2 px-4 bg-gray-500 dark:bg-slate-600 text-white dark:text-gray-300 font-medium hover:bg-gray-600 dark:hover:bg-slate-700 cursor-pointer transition-colors rounded-l-lg"
                                         >
                                         <Square/>
                                     </button>
@@ -323,10 +522,10 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
                                         type="submit"
 
                                         disabled={loading}
-                                        className={`flex-1 flex items-center justify-center py-2 px-4 bg-blue-600 text-white font-medium rounded-r transition-colors
+                                        className={`flex-1 flex items-center justify-center py-2 px-4 text-white font-medium rounded-r-lg transition-colors
                                                     ${ loading
-                                                        ? 'bg-blue-900 cursor-not-allowed' // Style saat tombol mati
-                                                        : 'bg-blue-600 hover:bg-blue-700 cursor-pointer' // Style saat tombol aktif
+                                                        ? 'bg-blue-900 dark:bg-blue-950 cursor-not-allowed' // Style saat tombol mati
+                                                        : 'bg-blue-600 dark:bg-blue-800 hover:bg-blue-700 cursor-pointer dark:hover:bg-blue-900' // Style saat tombol aktif
                                                     } text-white`}
                                         >
                                         {loading ? (
@@ -342,7 +541,7 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
                         <div className="flex flex-1 flex-col ml-6 ">
                             <div className="flex">
                                 <div className=" mb-3">
-                                    <DialogTitle className="text-base text-xl">
+                                    <DialogTitle className="text-base dark:text-gray-200 ">
                                         Slot Mesin
                                     </DialogTitle>
                                     <p className="text-sm text-gray-400 mt-2">
@@ -354,10 +553,10 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
                             <div onMouseUp={handleMouseUp} onMouseLeave={handleMouseLeave}>
                                 <div className="flex justify-between">
                                 <div className="flex items-center gap-3 mb-3">
-                                    <label className="text-sm text-gray-500">Baris</label>
+                                    <label className="text-sm text-gray-500 dark:text-gray-300" >Baris</label>
                                     <div className="relative">
                                         <select
-                                            className={`overflow-hidden pr-8 truncate h-full appearance-none block px-3 py-1 bg-zinc-50 border border-gray-300 text-xs rounded-base focus:outline-hidden focus:ring-0 shadow-xs placeholder:text-body rounded-md cursor-pointer`}
+                                            className={`overflow-hidden pr-8 truncate h-full appearance-none block px-3 py-1 bg-blue-50/50 dark:bg-slate-900 border border-blue-100 dark:border-slate-700 focus:ring-2  text-xs rounded-base focus:outline-hidden focus:ring-blue-50 dark:focus:ring-slate-500/20 transition-all shadow-xs placeholder:text-body rounded-md cursor-pointer dark:text-gray-200`}
                                             value={rows}
                                             onChange={(e) => {
                                             handleSetRows(Number(e.target.value));
@@ -369,11 +568,11 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
                                             </option>
                                             ))}
                                         </select>
-                                        <div className={`pointer-events-none absolute inset-y-0 right-0 flex items-center px-2`}>
+                                        <div className={`pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 dark:text-gray-300`}>
                                             <ChevronsDown size={12}/>
                                         </div>
                                     </div>
-                                    <button onClick={handleReset} className="py-1 px-3 bg-amber-400 text-xs rounded text-white hover:bg-amber-500 shadow-md shadow-amber-300/50">
+                                    <button onClick={handleReset} className="py-1 px-3 bg-amber-400 dark:bg-amber-900/50 text-xs rounded text-white dark:text-amber-400 hover:bg-amber-500  dark:hover:bg-amber-900">
                                     Reset semua
                                     </button>
                                 </div>
@@ -385,6 +584,16 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
                                 <div className="w-full flex flex-col gap-2">
                                 {slot.map((s) => (
                                     <div key={s.row_number} className="flex justify-between gap-2">
+                                     <div className="flex items-center justify-center">
+                                        <button
+                                        type="button"
+                                        onClick={() => handleRemoveColumnFromRow(s.row_number)}
+                                        className="text-blue-500 dark:text-gray-300 bg-blue-100 dark:bg-slate-700 border border-blue-300 dark:border-slate-900 hover:bg-blue-50 dark:hover:bg-slate-900 text-sm px-2 py-2.5 rounded h-full transition-all"
+                                        >
+                                        <Minus size={20}/>
+                                
+                                        </button>
+                                    </div>
                                     <div className="flex w-full gap-2">
                                         {s.col
                                         
@@ -403,12 +612,12 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
                                                 rounded-lg border-[1.5px] text-center px-3 py-2
                                                 transition-colors duration-100 select-none relative
                                                 ${isMerged
-                                                    ? "bg-emerald-50 border-emerald-500 text-emerald-900 cursor-pointer"
+                                                    ? "bg-emerald-50 dark:bg-emerald-950 border-emerald-500 dark:border-emerald-700 text-emerald-900 dark:text-emerald-400 cursor-pointer"
                                                     : dragState === "drag-start"
-                                                    ? "bg-blue-50 border-blue-400 text-blue-700 cursor-crosshair"
+                                                    ? "bg-blue-50 dark:bg-blue-950 border-blue-400 dark:border-blue-700 text-blue-700 dark:text-blue-400 cursor-crosshair"
                                                     : dragState === "drag-over"
-                                                    ? "bg-blue-200 border-blue-400 text-blue-900 cursor-crosshair"
-                                                    : "bg-white border-gray-300 text-gray-400 cursor-crosshair"
+                                                    ? "bg-blue-200 dark:bg-blue-900 border-blue-400 dark:border-blue-700 text-blue-900 dark:text-blue-400 cursor-crosshair"
+                                                    : "bg-white dark:bg-slate-900 border-gray-300 dark:border-gray-700 text-gray-400 cursor-crosshair"
                                                 }
                                                 `}
                                                 onMouseDown={!isMerged ? (e) => handleMouseDown(e, s.row_number, c.col_number) : undefined}
@@ -418,10 +627,10 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
                                                 {isMerged ? (
                                                 <>
                                                     <span className="text-xs font-medium">{c.kode}</span>
-                                                    <span className="text-[8px] py-0.5 px-2 bg-emerald-500 absolute right-1 top-1 rounded-sm text-white">
+                                                    <span className="text-[8px] py-0.5 px-2 bg-emerald-500 dark:bg-emerald-700 absolute right-1 top-1 rounded-sm text-white">
                                                     {c.span} kolom
                                                     </span>
-                                                    <span className="text-[10px] text-emerald-700 opacity-70">klik untuk pisah</span>
+                                                    <span className="text-[10px] text-emerald-700 dark:text-emerald-500 opacity-70">klik untuk pisah</span>
                                                 </>
                                                 ) : (
                                                 <span className="text-xs">{c.kode}</span>
@@ -435,7 +644,7 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
                                         <button
                                         type="button"
                                         onClick={() => handleAddColumnToRow(s.row_number)}
-                                        className="text-body bg-neutral-200 border border-zinc-300 hover:bg-neutral-300 text-sm px-2 py-2.5 rounded h-full"
+                                        className="text-blue-500 dark:text-gray-300 bg-blue-100 dark:bg-slate-700 border border-blue-300 dark:border-slate-900 hover:bg-blue-50 dark:hover:bg-slate-900 text-sm px-2 py-2.5 rounded h-full transition-all"
                                         >
                                         <Plus size={20}/>
                                 

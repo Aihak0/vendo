@@ -10,10 +10,12 @@ import MesinPage from "./pages/Dashboard/Mesin/MesinPage";
 import LandingPage from "./pages/LandingPage";
 import NotFound from "./NotFound";
 import UserPage from "./pages/Dashboard/User/UserPage";
+import TransaksiPage from "./pages/Dashboard/Transaksi/Page";
+import PergerakanStockPage from "./pages/Dashboard/PergerakanStock/Page";
 
 function AppContent() {
   const location = useLocation();
-  const validPaths = ['/', '/login', '/dashboard', '/produk', '/mesin', '/user'];
+  const validPaths = ['/', '/login', '/dashboard', '/produk', '/mesin', '/user', '/transaksi', '/pergerakan-stock'];
   const isLoginPage = location.pathname === '/login';
   const isLandingPage = location.pathname === '/';
   const isNotFound = !validPaths.includes(location.pathname);
@@ -47,7 +49,7 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-blue-50 dark:bg-slate-900">
       <Header />
       <div className="flex">
         <AppSidebar />
@@ -60,6 +62,8 @@ function AppContent() {
                 <Route path="/produk" element={<ProductPage />} />
                 <Route path="/mesin" element={<MesinPage />} />
                 <Route path="/user" element={<UserPage />} />
+                <Route path="/transaksi" element={<TransaksiPage />} />
+                <Route path="/pergerakan-stock" element={<PergerakanStockPage />} />
               </Route>
               
              

@@ -9,14 +9,14 @@ export class RolesGuard implements CanActivate {
     const supabase = this.supabaseService.getClient();
     const request = context.switchToHttp().getRequest();
     const user = request.user;
-    
+     
     const { data: profile } = await supabase
       .from('user_profiles')
       .select('role')
       .eq('user_id', user.id)
       .single();
 
-    if (profile?.role !== 'ADMIN') {
+    if (profile?.role !== 'admin') {
       throw new ForbiddenException('Hanya Admin yang diizinkan!');
     }
 
