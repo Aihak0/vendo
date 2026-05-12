@@ -77,7 +77,7 @@ export default function MapPicker({ onLocationSelected, set_position, onLoadingC
   };
 
   return (
-    <APIProvider apiKey="AIzaSyC5UQlT_g-rMsndNB1kN1aKWCi9zmjbCLY">
+    <APIProvider apiKey={import.meta.env.VITE_GOOGLE_MAP_API_KEY}>
       <div className="map-wrapper cursor-pointer relative" >
         {isLoadingMap && (
           <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
@@ -97,7 +97,7 @@ export default function MapPicker({ onLocationSelected, set_position, onLoadingC
             }
           }}
           
-          mapId="f1cc353e6ab6f01c5f111d9b"
+          mapId={import.meta.env.VITE_GOOGLE_MAP_ID}
           gestureHandling="greedy"
           disableDefaultUI={true}
           colorScheme={theme === "dark" ? "DARK" : theme === 'system' ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "DARK" : "LIGHT") : "LIGHT"}
@@ -134,7 +134,7 @@ export default function MapPicker({ onLocationSelected, set_position, onLoadingC
   );
 }
 
-function MapSkeleton(){
+ function MapSkeleton(){
   return(
     <div className="w-full h-[400px] overflow-hidden relative bg-slate-200 dark:bg-slate-950 animate-pulse">
       <div className="absolute w-full h-px bg-slate-300/50 dark:bg-slate-900 top-[80px]" />

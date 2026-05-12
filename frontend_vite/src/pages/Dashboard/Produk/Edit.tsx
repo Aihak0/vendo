@@ -4,19 +4,7 @@ import { useAlert } from "../../UiElements/Alert";
 import { FolderPen, Loader2, PenLine, Circle, Square, CloudUpload } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateProduct } from "../../../services/api"; // Ganti ke updateProduct
-
-interface Produk {
-    id: string; // Tambahkan ID untuk keperluan update
-    nama: string;
-    harga: number;
-    img_url: string;
-}
-
-interface ProdukEditModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    dataEdit: Produk | null; // Data yang dilempar dari list
-}
+import { type Produk, type ProdukEditModalProps } from "./interface";
 
 export function ProdukEdit({ isOpen, onClose, dataEdit }: ProdukEditModalProps) {
     const queryClient = useQueryClient();

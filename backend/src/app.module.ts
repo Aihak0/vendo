@@ -20,6 +20,8 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { TransaksiController } from './transaksi/transaksi.controller';
 import { MqttModule } from './mqtt/mqtt.module';
 import { TransaksiService } from './transaksi/transaksi.service';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { TaskModule } from './task/task.module';
 
 @Module({
   imports: [ClientsModule.register([
@@ -37,7 +39,7 @@ import { TransaksiService } from './transaksi/transaksi.service';
     ]),
     SupabaseModule, AuthModule, ConfigModule.forRoot({
       isGlobal: true,
-    }), ProdukModule, MesinModule, PesanModule, UserModule, MidtransModule, TransaksiModule, PergerakanStockModule, MqttModule,
+    }), ProdukModule, MesinModule, PesanModule, UserModule, MidtransModule, TransaksiModule, PergerakanStockModule, MqttModule, DashboardModule, TaskModule,
   ],  
   controllers: [AppController, AuthController, ProdukController, TransaksiController],
   providers: [AppService, ProdukService, TransaksiService],

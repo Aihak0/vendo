@@ -31,7 +31,7 @@ export default function MesinPage() {
 
   const [activeStatus, setActiveStatus] = useState("all");
 
-  const [sortKey, setSortKey] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<string | undefined>();
   const [sortAsc, setSortAsc] = useState(true);
   const [selected, setSelected] = useState<string[]>([]);
   const [page, setPage] = useState(1);
@@ -41,6 +41,7 @@ export default function MesinPage() {
     { key: "nama", label: "Nama" },
     { key: "lokasi", label: "Lokasi" },
     { key: "status", label: "Status" },
+    { key: "teknisi", label: "Teknisi" },
   ];
 
   const toggleSort = (key: string) => {
@@ -50,7 +51,6 @@ export default function MesinPage() {
 
 
   const { data: mesin, isLoading, error } = useQuery({
-    // Sangat penting: masukkan searchTerm ke queryKey agar otomatis refetch saat ketik
     queryKey: ['mesin', page, limit, sortKey, sortAsc, searchTerm, activeStatus], 
     queryFn: () => getMesin(page, limit, sortKey, sortAsc, searchTerm, activeStatus),
   });
@@ -71,7 +71,7 @@ export default function MesinPage() {
     setInputValue('');
     setSearchTerm('');
     setActiveStatus("all");
-    setSortKey(null);
+    setSortKey(undefined);
     setSortAsc(true);
     setPage(1);
     setLimit(10);
@@ -197,7 +197,7 @@ export default function MesinPage() {
                                         dark:checked:bg-blue-600 dark:checked:border-blue-600"
                     />
                   </th>
-                  {columns.map((col) => 
+                  {columns.map((col: any) => 
                   {
                     const isSortable = col.key !== "lokasi";
                     const onClickProps = isSortable ? { onClick: () => toggleSort(col.key) } : {};
@@ -284,18 +284,43 @@ export default function MesinPage() {
                       </td>
                       <td className="px-4 py-3.5 text-sm text-slate-600 dark:text-gray-400">{row.kode.slice(0, 8)}</td>
                       <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                            {row.nama.charAt(0)}
-                          </div>
+                    
+           
                           <span className="text-sm font-medium text-slate-800 dark:text-gray-300">{row.nama}</span>
-                        </div>
+
                       </td>
-                      <td className="px-4 py-3.5 text-sm text-slate-600 dark:text-gray-300">{lokasiLengkap}</td>
+                      <td className="px-4 py-3.5 text-sm text-slate-600 dark:text-gray-300 truncate max-w-40">{lokasiLengkap}</td>
                       <td className="px-4 py-3.5">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${ row.status === 'online' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : row.status === 'offline' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-400' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' } `}>
                           {row.status}
                         </span>
+                      </td>
+                       <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-2">
+
+                            {row.mesin_teknisi.length > 0 ? (
+                              row.mesin_teknisi.slice(0, 2).map((item :any) => 
+                                item.urlPasfoto ? (
+                                  <div key={item.user_id} className="flex items-center gap-1">
+                                    <img src={item.urlPasfoto} className='w-9 h-9 rounded-full' alt="" />
+                                    <span className="text-sm font-medium text-slate-800 dark:text-gray-300">{item.nama}</span>
+                                  </div>
+                                ) : (
+                                  <div key={item.user_id} className="flex items-center gap-1">
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                                      {item.nama.charAt(0)}
+                                    </div>
+                                    <span className="text-sm font-medium text-slate-800 dark:text-gray-300">{item.nama}</span>
+                                  </div>
+                                )
+                              ),
+                              row.mesin_teknisi.length > 2 && (
+                                <span> dan {row.mesin_teknisi.length - 2} teknisi lainnya</span>
+                              )
+                            ) :  <p className='text-sm text-slate-600 dark:text-gray-400'>Tidak ada teknisi</p>
+                            }
+                          </div>
+                
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-1">

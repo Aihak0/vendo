@@ -10,9 +10,15 @@ export class UserController {
     constructor(private readonly userService: UserService){}
 
     @Get()
-    @UseGuards(AuthGuard, RolesGuard)
-    async findAll(@Query('page', ParseIntPipe) page: number = 1, @Query('limit', ParseIntPipe) limit: number = 10, @Query("sortAsc", new ParseBoolPipe({optional: true})) sortAsc: boolean, @Query("sortKey") sortKey: string, @Query('search') search: string, @Query("role") role: string){
+    // @UseGuards(AuthGuard, RolesGuard)
+    async findAll(@Query('page', new ParseIntPipe({ optional: true })) page: number, @Query('limit', new ParseIntPipe({ optional: true })) limit: number, @Query("sortAsc", new ParseBoolPipe({optional: true})) sortAsc: boolean, @Query("sortKey") sortKey: string, @Query('search') search: string, @Query("role") role: string){
         return await this.userService.findAll(page, limit, sortAsc, sortKey, search, role);
+    }
+
+    @Get('profile')
+    // @UseGuards(AuthGuard, RolesGuard)
+    async getUserProfile(@Query('id') id: string){
+        return await this.userService.getUserProfiles(id);
     }
 
     @Post('add')

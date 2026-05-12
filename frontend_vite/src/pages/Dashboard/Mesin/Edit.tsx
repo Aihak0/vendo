@@ -1,17 +1,23 @@
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAlert } from "../../UiElements/Alert";
-import { FolderPen, Square, Loader2, FilePen, Circle, ChevronDown, Plus, Minus } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { FolderPen, Square, Loader2, FilePen, Circle, ChevronDown, Plus, Minus, Check, X } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { updateMesin } from "../../../services/api"; // Ganti ke updateProduct
 import { colToLetter, getDragState } from "./proses";
-import { type DragState, type MesinEditModalProps, type SlotRow } from './Interface'; 
-
+import { type DragState, type MesinEditModalProps, type SlotRow, type Teknisi } from './Interface'; 
+import { Label, Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react'
 import {type MouseEvent } from "react";
 import MapPicker from "../../../components/MapsPicker";
+import { getUser } from "../../../services/api";
 
 
 export function ProdukEdit({ isOpen, onClose, dataEdit }: MesinEditModalProps) {
+    const { data: teknisi, isLoading: loadingTeknisi , error: errorTeknisi} = useQuery({
+      // Sangat penting: masukkan searchTerm ke queryKey agar otomatis refetch saat ketik
+      queryKey: ['teknisi'], 
+      queryFn: () => getUser(undefined, undefined, undefined, undefined, undefined, "teknisi")
+    });
     const dragRef = useRef<DragState>({ active: false, startR: null, startC: null, curC: null });
 
     const queryClient = useQueryClient();
@@ -27,6 +33,7 @@ export function ProdukEdit({ isOpen, onClose, dataEdit }: MesinEditModalProps) {
     const [kabupaten, setKabupaten] = useState("");
     const [provinsi, setProvinsi] = useState("");
     const [negara, setNegara] = useState("");
+    const [teknisiMesin, setTeknisiMesin] = useState<any>([]);
     const [kodePos, setKodePos] = useState("");
     const [isMapReady, setIsMapReady] = useState(true);
     const provinces = [
@@ -74,7 +81,8 @@ export function ProdukEdit({ isOpen, onClose, dataEdit }: MesinEditModalProps) {
     const [, setTick] = useState<number>(0);
     const idMesin = dataEdit?.id || "";
 
- 
+
+  
     // --- Efek untuk Mengisi Data Awal (Edit Mode) ---
     useEffect(() => {
         if (dataEdit && isOpen) {
@@ -110,6 +118,7 @@ export function ProdukEdit({ isOpen, onClose, dataEdit }: MesinEditModalProps) {
 
             groupedByRow.sort((a, b) => a.row_number - b.row_number);
 
+            const filteredTeknisi = teknisi?.data?.find((t: any) => t.user_id === dataEdit.teknisi_id);
             setNama(dataEdit.nama);
             setLatitude(dataEdit.latitude);
             setLongitude(dataEdit.longitude);
@@ -121,11 +130,13 @@ export function ProdukEdit({ isOpen, onClose, dataEdit }: MesinEditModalProps) {
             setKodePos(dataEdit.kodePos);
             setRows(dataEdit.row_slots); 
             setSlot(groupedByRow);
+            setTeknisiMesin(dataEdit.mesin_teknisi || []);
             console.log("slot yang dis et", groupedByRow)
         }
     }, [dataEdit, isOpen]);
 
  
+
     // --- Mutation ---
       const mutation = useMutation({
       
@@ -347,7 +358,8 @@ export function ProdukEdit({ isOpen, onClose, dataEdit }: MesinEditModalProps) {
           kabupaten: kabupaten,
           provinsi: provinsi,
           negara: negara,
-          kode_pos: kodePos
+          kode_pos: kodePos,
+          teknisi: teknisiMesin
       };
       mutation.mutate({ id: idMesin, formData: payload });  
   }
@@ -388,6 +400,107 @@ export function ProdukEdit({ isOpen, onClose, dataEdit }: MesinEditModalProps) {
                                     
                                     />
                                 
+                                </div>
+                                <div className="mb-3">
+                                  <Listbox value={teknisiMesin} onChange={setTeknisiMesin} multiple>
+                                        <Label className="block font-medium text-xs">Teknisi Mesin</Label>
+                                        <div className="relative mt-2 cursor-pointer">
+                                        <ListboxButton className="grid w-full cursor-default grid-cols-1 rounded-md bg-blue-50/50 dark:bg-slate-900 py-1.5 pr-2 pl-3 text-left dark:text-white border border-blue-100 dark:border-slate-700 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500 sm:text-sm/6 cursor-pointer min-h-9">
+                                            <span className="col-start-1 row-start-1 flex flex-wrap items-center gap-1.5 pr-6">
+                                            {teknisiMesin.length > 0 ? (
+                                                teknisiMesin.map((t: any) => (
+                                                <span
+                                                    key={t.user_id}
+                                                    className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 dark:bg-blue-950 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300"
+                                                >
+                                                    <img
+                                                    alt=""
+                                                    src={t.urlPasfoto}
+                                                    className="size-4 shrink-0 rounded-full bg-gray-700 outline -outline-offset-1 outline-white/10"
+                                                    />
+                                                    <span>{t.nama}</span>
+                                                    {/* Tombol hapus per item */}
+                                                    <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // Jangan trigger Listbox
+                                                        setTeknisiMesin((prev: any[]) =>
+                                                        prev.filter((item) => item.user_id !== t.user_id)
+                                                        );
+                                                    }}
+                                                    className="ml-0.5 text-blue-400 hover:text-blue-600 dark:hover:text-blue-200"
+                                                    >
+                                                    <X className="size-3" aria-hidden="true" />
+                                                    </button>
+                                                </span>
+                                                ))
+                                            ) : (
+                                                <span className="block truncate cursor-pointer text-gray-400 dark:text-gray-500">
+                                                Pilih teknisi
+                                                </span>
+                                            )}
+                                            </span>
+                                            <ChevronDown
+                                            aria-hidden="true"
+                                            className="col-start-1 row-start-1 size-5 self-center justify-self-end text-blue-300 dark:text-gray-400 sm:size-4"
+                                            />
+                                        </ListboxButton>
+
+                                        <ListboxOptions
+                                            transition
+                                            className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md bg-white dark:bg-slate-900 py-1 text-base border border-blue-100 dark:border-slate-700 shadow-lg data-leave:transition data-leave:duration-100 data-leave:ease-in data-closed:data-leave:opacity-0 sm:text-sm"
+                                        >
+                                            {loadingTeknisi ? (
+                                            <ListboxOption
+                                                value=""
+                                                className="group relative cursor-default py-2 pr-9 pl-3 dark:text-white select-none data-focus:bg-slate-500 data-focus:outline-hidden cursor-pointer"
+                                            >
+                                                <div className="flex items-center">
+                                                <span className="ml-3 block truncate font-normal">loading data...</span>
+                                                </div>
+                                            </ListboxOption>
+                                            ) : (
+                                            teknisi.data.map((t: any) => (
+                                                <ListboxOption
+                                                key={t.user_id}
+                                                value={t}
+                                                className="group relative cursor-default py-2 pr-9 pl-3 dark:text-white select-none data-focus:bg-blue-500 dark:data-focus:bg-blue-950 data-focus:outline-hidden cursor-pointer"
+                                                >
+                                                <div className="flex items-center">
+                                                    <img
+                                                    alt=""
+                                                    src={t.urlPasfoto}
+                                                    className="size-5 shrink-0 rounded-full outline -outline-offset-1 outline-white/10"
+                                                    />
+                                                    <span className="ml-3 block truncate font-normal group-data-selected:font-semibold">
+                                                    {t.nama}
+                                                    </span>
+                                                    <span className="ml-3 block truncate text-gray-500 text-xs font-normal group-data-selected:font-semibold">
+                                                    {t.email}
+                                                    </span>
+                                                </div>
+
+                                                <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-blue-600 group-not-data-selected:hidden group-data-focus:text-white">
+                                                    <Check aria-hidden="true" className="size-4" />
+                                                </span>
+                                                </ListboxOption>
+                                            ))
+                                            )}
+
+                                            {errorTeknisi && (
+                                            <ListboxOption
+                                                value=""
+                                                className="group relative cursor-default py-2 pr-9 pl-3 text-red-500 select-none data-focus:bg-indigo-500 data-focus:outline-hidden"
+                                            >
+                                                <div className="flex items-center">
+                                                <span className="ml-3 block truncate font-normal">Gagal Mengambil data</span>
+                                                </div>
+                                            </ListboxOption>
+                                            )}
+                                        </ListboxOptions>
+                                        </div>
+                                    </Listbox>
+                                    
                                 </div>
                             </div>
                             

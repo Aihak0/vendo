@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { LayoutDashboard, Settings, LogOut, Apple, Calculator, UserRound, ArrowUp01, Receipt } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, Apple, Calculator, UserRound, ArrowUp01, Receipt, Loader, List } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from 'react-router-dom';
 
 
 export function AppSidebar() {
   const [isOpen, setIsOpen] = useState(false);
-  const { logout } = useAuth();
+  const { profile, loading: loadingUser, user,  logout } = useAuth();
   const navigate = useNavigate();
 
 
@@ -16,7 +16,7 @@ export function AppSidebar() {
     navigate("/login");
   }
 
-  const pathnames = location.pathname.split("/").filter(Boolean).at(-1);
+  const pathnames = location.pathname;
   return (
     <>
       {isOpen && (
@@ -40,65 +40,94 @@ export function AppSidebar() {
   
         {/* Nav */}
         <nav className="flex-1 px-3 py-5 space-y-1.5">
-          <NavItem 
-            href={`/dashboard`}
-            icon={<LayoutDashboard size={22} />} 
-            isActive={pathnames === "dashboard"}
-            label="Dashboard" 
-            isOpen={isOpen} 
-          />
-          <NavItem 
-            href={`/produk`}
-            icon={<Apple size={22} />} 
-            isActive={pathnames === "produk"}
-            label="Produk" 
-            isOpen={isOpen} 
-          />
-          <NavItem 
-            href={`/mesin`}
-            icon={<Calculator size={22} />} 
-            isActive={pathnames === "mesin"}
-            label="Mesin" 
-            isOpen={isOpen} 
-          />
-          <NavItem 
-            href={`/user`}
-            icon={<UserRound size={22} />} 
-            isActive={pathnames === "user"}
-            label="User" 
-            isOpen={isOpen} 
-          />
-          <hr className=" my-0 border-gray-300 dark:border-gray-700 my-3" />
-          <NavItem 
-            href={`/transaksi`}
-            icon={<Receipt size={22} />} 
-            isActive={pathnames === "transaksi"}
-            label="Transaksi" 
-            isOpen={isOpen} 
-          />
-          <NavItem 
-            href={`/pergerakan-stock`}
-            icon={<ArrowUp01 size={22} />} 
-            isActive={pathnames === "pergerakan-stock"}
-            label="Pergerakan Stock" 
-            isOpen={isOpen} 
-          />
+          { loadingUser || !user ? (
+          <div className="animate-pulse space-y-1.5">
+            <div className="p-6 rounded-lg bg-slate-800"></div>
+            <div className="p-6 rounded-lg bg-slate-800"></div>
+            <div className="p-6 rounded-lg bg-slate-800"></div>
+          </div>
+          ):(
+            profile.role === 'admin' ? (
+              <>
+                <NavItem 
+                  href={`/dashboard`}
+                  icon={<LayoutDashboard size={22} />} 
+                  isActive={pathnames === "/dashboard"}
+                  label="Dashboard" 
+                  isOpen={isOpen} 
+                />
+                <NavItem 
+                  href={`/produk`}
+                  icon={<Apple size={22} />} 
+                  isActive={pathnames === "/produk"}
+                  label="Produk" 
+                  isOpen={isOpen} 
+                />
+                <NavItem 
+                  href={`/mesin`}
+                  icon={<Calculator size={22} />} 
+                  isActive={pathnames === "/mesin"}
+                  label="Mesin" 
+                  isOpen={isOpen} 
+                />
+                <NavItem 
+                  href={`/user`}
+                  icon={<UserRound size={22} />} 
+                  isActive={pathnames === "/user"}
+                  label="User" 
+                  isOpen={isOpen} 
+                />
+                <NavItem 
+                  href={`/task`}
+                  icon={<List size={22} />} 
+                  isActive={pathnames === "/task"}
+                  label="Task" 
+                  isOpen={isOpen} 
+                />
+                <hr className=" my-0 border-gray-300 dark:border-gray-700 my-3" />
+                <NavItem 
+                  href={`/transaksi`}
+                  icon={<Receipt size={22} />} 
+                  isActive={pathnames === "/transaksi"}
+                  label="Transaksi" 
+                  isOpen={isOpen} 
+                />
+                <NavItem 
+                  href={`/pergerakan-stock`}
+                  icon={<ArrowUp01 size={22} />} 
+                  isActive={pathnames === "/pergerakan-stock"}
+                  label="Pergerakan Stock" 
+                  isOpen={isOpen} 
+                />
+              </>
+            ) : (
+              <>
+                <NavItem 
+                  href={`/teknisi/dashboard`}
+                  icon={<LayoutDashboard size={22} />} 
+                  isActive={pathnames === "/teknisi/dashboard"}
+                  label="Dashboard" 
+                  isOpen={isOpen} 
+                />
+              </>
+            )
+          )}
          
         </nav>
         
         {/* Bottom actions */}
         <div className="p-3 space-y-1.5">
          <hr className=" my-0 border-gray-300 dark:border-gray-700 my-3" />
-          <NavItem 
+          {/* <NavItem 
             href="#" 
             icon={<Settings size={22} />} 
             label="Pengaturan" 
             isOpen={isOpen} 
-          />
+          /> */}
           <button  
           onClick={handlelogout}
           className={`w-full
-            group flex items-center rounded-lg px-3 py-3 transition-all duration-300 text-red-600 hover:bg-red-50/80
+            group flex items-center rounded-lg px-3 py-3 transition-all duration-300 text-red-600 hover:bg-red-50/80 dark:hover:bg-red-950/50
             ${isOpen ? 'justify-start gap-3' : ''}
           `}>
              <span 

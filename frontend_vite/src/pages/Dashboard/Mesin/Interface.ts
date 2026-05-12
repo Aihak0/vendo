@@ -1,3 +1,5 @@
+import { type Produk } from "../Produk/interface";
+
 export interface MesinSlotModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -25,7 +27,10 @@ export interface MesinDeleteModalProps{
 export interface Mesin {
     id: string; // Tambahkan ID untuk keperluan update
     nama: string;
+    kode?: string
     lokasi: string;
+    status: 'online' | 'maintenance' | 'offline';
+    total_slot: number;
     latitude: number;
     longitude: number;
     desa: string;
@@ -36,7 +41,9 @@ export interface Mesin {
     kodePos: string;
     row_slots: number;
     column_slots: number;
-    slot: SlotData[]
+    slot: SlotData[];
+    teknisi_id: string;
+    mesin_teknisi:any[];
 }
 
 export interface SlotData {
@@ -44,6 +51,7 @@ export interface SlotData {
   kode: string;  // contoh: "R1C1"
   produk_id: string;
   stock: number;
+  produk?: Produk; 
   metadata: {
     row_number: number;
     col_number: number;
@@ -53,12 +61,16 @@ export interface SlotData {
 }
 
 export interface Column {
+  id?: string;
   kode: string;
   col_number: number;
   span: number;       
   gabungan: string[];
   stock?: number;
+  added_stock?: number;
   produk_id?: string;
+  produk?: Produk;
+  changed?: boolean;
 }
 
 export interface SlotRow {
@@ -72,4 +84,12 @@ export interface DragState {
   startR: number | null;
   startC: number | null;
   curC: number | null;
+}
+
+export interface Teknisi {
+  user_id: number;
+  nama: string;
+  email: string;
+  urlPasfoto: string; // Tambahkan properti ini
+  // ... properti lainnya
 }

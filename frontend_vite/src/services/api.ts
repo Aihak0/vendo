@@ -3,8 +3,8 @@ import axios from 'axios';
 import { createClient } from '@supabase/supabase-js';
 import type { DateType } from 'react-tailwindcss-datepicker';
 
-const api = axios.create({ baseURL: 'https://vendo-api-0i0p.onrender.com' });
-// const api = axios.create({ baseURL: 'http://localhost:3000' });
+// const api = axios.create({ baseURL: 'https://vendo-api-0i0p.onrender.com' });
+const api = axios.create({ baseURL: 'http://localhost:3000' });
 
 const supabase = createClient('https://gqqghwfjsokyqjxztxwk.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxcWdod2Zqc29reXFqeHp0eHdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzMzEzNzgsImV4cCI6MjA4NzkwNzM3OH0.tCPMutwRd3vRDxE5q6pSj38MEXbQnkLYO0QiHzGk9J4');
 
@@ -27,7 +27,7 @@ export const getProducts = async (page?: number, limit?: number, sortKey?: strin
   return data;
 };
 
-export const getMesin = async (page: number, limit: number, sortKey: string | null, sortAsc: boolean | null, search: string | null, status: string | null) => {
+export const getMesin = async (page?: number, limit?: number, sortKey?: string, sortAsc?: boolean, search?: string, status?: string) => {
   // Mengirim query params ?search=... ke backend
   const { data } = await api.get('/mesin', {
     params: { page, limit, sortAsc, sortKey, search, status }
@@ -35,7 +35,25 @@ export const getMesin = async (page: number, limit: number, sortKey: string | nu
   return data;
 };
 
-export const getUser = async (page: number, limit: number, sortAsc: boolean | null, sortKey: string | null, search: string | null, role: string | null) => {
+export const getManagedMesin = async (teknisi_id: string) => {
+  // Mengirim query params ?search=... ke backend
+  const { data } = await api.get('/mesin/managed-by', {
+    params: { teknisi_id }
+  });
+  return data;
+};
+
+export const getManagedMesinLogs = async (teknisi_id: string, filter?: string) => {
+  // Mengirim query params ?search=... ke backend
+  const { data } = await api.get('/mesin/managed-logs', {
+    params: { teknisi_id, filter }
+  });
+  return data;
+};
+
+
+
+export const getUser = async (page?: number, limit?: number, sortAsc?: boolean | null, sortKey?: string | null, search?: string | null, role?: string | null) => {
   // Mengirim query params ?search=... ke backend
   const { data } = await api.get('/user', {
     params: { page, limit, sortAsc, sortKey, search, role}
@@ -51,10 +69,10 @@ export const getTransaksi = async (page: number, limit: number, sortAsc: boolean
   return data;
 };
 
-export const getLogMesin = async (search = '', page: number, limit: number) => {
+export const getLogMesin = async (search: string, page: number, limit: number, filter: string) => {
   // Mengirim query params ?search=... ke backend
   const { data } = await api.get('/mesin/logs', {
-    params: { search, page, limit}
+    params: { search, page, limit, filter}
   });
   return data;
 };
@@ -67,6 +85,15 @@ export const getPergerakanStok = async (page: number, limit: number, sortAsc: bo
   return data;
 };
 
+
+export const getTask = async (page: number, limit: number, sortAsc: boolean | null, sortKey: string | null, search: string | null, status: string | null, prioritas: string | null) => {
+  // Mengirim query params ?search=... ke backend
+  const { data } = await api.get('/task', {
+    params: { page, limit, sortAsc, sortKey, search, status, prioritas }
+  });
+  return data;
+};
+
 export const getSumary = async (filter: string, dari?: DateType , sampai?: DateType) => {
   // Mengirim query params ?search=... ke backend
   const { data } = await api.get('/transaksi/summary', {
@@ -74,6 +101,13 @@ export const getSumary = async (filter: string, dari?: DateType , sampai?: DateT
   });
   return data;
 };
+
+export const getDataDashboard = async (filter: string, dari?: DateType , sampai?: DateType) => {
+  const { data } = await api.get('/dashboard', {
+    params: { filter, dari, sampai }
+  });
+  return data;
+} 
 
 export const addProduct = async (formData: FormData) => {
   const { data } = await api.post("/produk/add", formData, {
@@ -102,10 +136,28 @@ export const addPesan = async (formData: any) => {
   return data;
 };
 
+export const updatedSlot = async (formData: any) => {
+  const { data } = await api.post("/mesin/update-stock", formData, {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  return data;
+};
+
 export const addUser = async (formData: FormData) => {
   const { data } = await api.post("/user/add", formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
+    },
+  });
+  return data;
+};
+
+export const addTask = async (formData: any) => {
+  const { data } = await api.post("/task/add", formData, {
+    headers: {
+      'Content-Type': 'application/json',
     },
   });
   return data;
@@ -147,6 +199,15 @@ export const updateMesin = async ({ id, formData }: { id: string, formData: any 
   return data;
 };
 
+export const updateTask = async ({ id, formData }: { id: string, formData: any }) => {
+  const { data } = await api.patch(`/task/update/${id}`, formData, {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  return data;
+};
+
 // Ubah parameter dari (dataDelete: String[]) menjadi (payload: { id: string[] })
 export const de_or_activateProduct = async (payload: any[]) => {
   const { data } = await api.post(`/produk/activate-or-deactivate`, payload, {
@@ -159,6 +220,16 @@ export const de_or_activateProduct = async (payload: any[]) => {
  
 export const deleteMesin = async (payload: { id: string[] }) => {
   const { data } = await api.post(`/mesin/delete`, payload, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  return data;
+};
+
+
+export const deleteTask = async (payload: { id: string[] }) => {
+  const { data } = await api.post(`/task/delete`, payload, {
     headers: {
       "Content-Type": "application/json",
     },

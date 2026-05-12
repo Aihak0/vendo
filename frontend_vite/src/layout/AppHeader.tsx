@@ -1,5 +1,5 @@
 import {  useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ChevronRight, ArrowLeftFromLine, SunMedium, Eclipse, SunMoon } from "lucide-react";
 
 import LogoDark from "../assets/LogoDark.png";
@@ -9,10 +9,10 @@ import { useTheme } from '../context/ThemeContext';
 
 export function Header() {
   const { theme, setThemeMode } = useTheme();
-  const {profile, loading: loadingAuth} = useAuth(); 
+  const {profile, loading: loadingAuth, logout} = useAuth(); 
   const location = useLocation();
   const [openDropdown, setOpenDropdown] = useState(false);
-
+  const navigate = useNavigate();
   // const [theme, setTheme] = useState(localStorage.getItem("theme") || "system");
 
   // useEffect(() => {
@@ -40,7 +40,10 @@ export function Header() {
   //   localStorage.setItem('theme', theme);
   // }, [theme]);
 
-
+    const handlelogout = async () => {
+      await logout();
+      navigate("/login");
+    }
   const pathnames = location.pathname.split("/").filter(Boolean);
 
   return (
@@ -139,7 +142,7 @@ export function Header() {
                     </button>
                     
                     <hr className="my-1 border-1 border-blue-100 dark:border-blue-950" />
-                    <button className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30">
+                    <button onClick={handlelogout} className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30">
                       <ArrowLeftFromLine size={16} className="mr-2" />
                       Keluar
                     </button>

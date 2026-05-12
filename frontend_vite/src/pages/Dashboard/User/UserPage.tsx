@@ -79,9 +79,6 @@ export default function UserPage() {
   const toggleAll = () => setSelected(selected.length === user.data.length ? [] : user.data.map((r:any) => ({ user_id: r.user_id, is_active: r.is_active })));
 
   useEffect(() => {
-    console.log("Selected => ", selected)
-  })
-  useEffect(() => {
     setSelected([]); // atau null, tergantung tipe data state kamu
 }, [user]);
   return (
@@ -297,7 +294,7 @@ export default function UserPage() {
                     <td className="px-4 py-3.5 text-sm text-slate-600 dark:text-gray-300">{row.last_signin === null ? ("Tidak Pernah login") : dayjs(row.last_signin).fromNow()}</td>
                     <td className="px-4 py-3.5 text-sm text-slate-600 dark:text-gray-400">{row.is_default_password ? ("Ya") : "Tidak"}</td>
                     <td className="px-4 py-3.5">
-                      { profile.user_id !== row.user_id && (
+                      { profile?.user_id !== row.user_id && (
 
                         <div className="flex items-center gap-1">
                           <button onClick={() => {

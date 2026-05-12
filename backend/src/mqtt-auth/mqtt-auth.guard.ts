@@ -34,7 +34,7 @@ export class MqttAuthGuard implements CanActivate {
 
     let query = supabase
       .from('mesin')
-      .select('id, kode, nama, status')
+      .select('id, kode, nama, status, teknisi_id')
       .eq('kode', kode)
 
     if (topic != "mesin/status") {

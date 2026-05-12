@@ -4,12 +4,8 @@ import { useAlert } from "../../UiElements/Alert";
 import { de_or_activateProduct } from "../../../services/api";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle, } from "@headlessui/react";
 import { CircleOff, Activity, Square, Loader2, TrendingUpDown, CircleSlash } from "lucide-react";
+import { type ProdukDeleteModalProps } from "./interface";
 
-interface ProdukDeleteModalProps{
-    isOpen: boolean;
-    onClose: () => void;
-    dataDeactivate: any[]
-}
 export function ProdukDelete({ isOpen, onClose, dataDeactivate}: ProdukDeleteModalProps){
     const [isLoading, setLoading] = useState(false);
     const queryClient = useQueryClient();

@@ -176,7 +176,7 @@ export class TransaksiService {
     const supabase = this.supabaseService.getClient();
     const midtrans = this.midtransService.getClient();
 
-    const { count, error } = await supabase
+    const { count } = await supabase
       .from('transaksi')
       .select('mesin_id', { count: 'exact', head: true })
       .eq('mesin_id', dataMesin.id)
@@ -195,7 +195,7 @@ export class TransaksiService {
       name: item.nama_produk,
     }));
 
-    const formatedOrderID = `${data.kode.slice(0,8)}-${Date.now()}-${count}`;
+    const formatedOrderID = `${data.kode.slice(0,8)}-${Date.now()}-${count || 0}`;
 
     const midtransPayload = {
       payment_type: 'qris',
@@ -376,7 +376,45 @@ export class TransaksiService {
       // console.log("datane => ",data);
       return this.sendMqtt(`transaksi/status`, {success: false, message: error?.message || "Kegagalan sistem."}, 0);
     }
-    
+
+    const { data: datainventaris, error: errorInventaris } = await supabase
+      .from("slot")
+      .select("kode, id, stock")
+      .lt("stock", 5)
+      .eq("mesin_id", dataMesin.id);
+
+    if (errorInventaris) {
+      throw new InternalServerErrorException(errorInventaris.message);
+    }
+
+    if (datainventaris.length > 0) {
+      const { data: existingTask } = await supabase
+        .from("task")
+        .select("id")
+        .eq("mesin_id", dataMesin.id)
+        .eq("tipe_tugas", "restock")
+        .in("status", ["pending", "assigned", "in_progress"])
+        .limit(1);
+
+      if (!existingTask || existingTask.length === 0) {
+        const lowStockItem = datainventaris.length === 1 ? datainventaris[0].kode : "beberapa slot";
+        const date = new Date();
+        date.setHours(23, 59, 59, 999);
+
+        const { error } = await supabase.from("task").insert({
+          judul: `Stock ${lowStockItem} menipis`,
+          status: "pending",
+          prioritas: "medium",
+          dibuat_oleh: "system",
+          mesin_id: dataMesin.id,
+          tipe_tugas: "restock",
+        });
+
+        if (error) {
+          throw new InternalServerErrorException(error.message);
+        }
+      }
+    }
     const payload = {
       success: true,
       message: "Berhasil menyelesaikan transaksi.",

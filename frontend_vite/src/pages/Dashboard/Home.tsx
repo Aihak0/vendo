@@ -3,11 +3,12 @@ import { ChartSpline, Cannabis, Calendars, CalendarDays, CalendarSync, CalendarC
 import { useAuth } from '../../context/AuthContext';
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getLogMesin, getSumary } from '../../services/api';
+import { getDataDashboard, getLogMesin, getSumary } from '../../services/api';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { type DateValueType } from "react-tailwindcss-datepicker";
-
+import { MapContainer } from '../../components/MapLokasi';
+import { LogRow, filterLogStyles, filterLogTypes } from '../../components/ui/log/Log';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -31,16 +32,6 @@ import advancedFormat from 'dayjs/plugin/advancedFormat';
 
 import "dayjs/locale/id"; 
 
-const filterLogStyles = {
-  info:    { badge: "bg-blue-100 text-blue-800 dark:bg-gray-400/40 dark:text-gray-200 dark:border dark:border-gray-500",   dot: "bg-blue-400",   label: "Info" },
-  online: { badge: "bg-emerald-100 text-emerald-800 dark:bg-emerald-400/40 dark:text-emerald-200 dark:border dark:border-emerald-500", dot: "bg-emerald-500",  label: "Online" },
-  success: { badge: "bg-green-100 text-green-800 dark:bg-green-400/40 dark:text-green-200 dark:border dark:border-green-500", dot: "bg-green-500",  label: "Berhasil" },
-  maintenance: { badge: "bg-amber-100 text-amber-800 dark:bg-amber-400/40 dark:text-amber-200 dark:border dark:border-amber-500", dot: "bg-amber-400",  label: "Perawatan" },
-  fail:   { badge: "bg-red-100 text-red-800 dark:bg-red-400/40 dark:text-red-200 dark:border dark:border-red-500",     dot: "bg-red-500",    label: "Fail" },
-  offline:   { badge: "bg-red-100 text-red-800 dark:bg-red-400/40 dark:text-red-200 dark:border dark:border-red-500",     dot: "bg-red-500",    label: "Offline" },
-  process:   { badge: "bg-gray-100 text-gray-600 dark:bg-gray-400/40 dark:text-gray-200 dark:border dark:border-gray-500",   dot: "bg-gray-400",   label: "Proses" },
-  all:   { badge: "",   dot: "",   label: "Semua Status" },
-};
 
 const filterSumStyles = {
   hari: { label: "Hari ini", icon: <Cannabis size={14} className='text-gray-400' /> },
@@ -51,7 +42,7 @@ const filterSumStyles = {
 }
 const filterSumTypes = ["hari", "minggu", "bulan", "tahun", "custom"];
 
-const filterLogTypes = ["all", "info", "success", "maintenance", "fail", "process", "online", "offline"];
+
 
 export default function Home() {
   dayjs.extend(isoWeek);
@@ -61,6 +52,7 @@ export default function Home() {
 
 
   dayjs.locale('id');
+  
 
   const isDark = useIsDark()
 
@@ -93,14 +85,13 @@ export default function Home() {
 
 
   const { data: logMesin, isLoading, error } = useQuery({
-    // Sangat penting: masukkan searchTerm ke queryKey agar otomatis refetch saat ketik
-    queryKey: ['logMesin', searchLogMesin, page, pageSize], 
-    queryFn: () => getLogMesin(searchLogMesin, page, pageSize),
+    // Sangat penting: masukkan searchTerm ke queryKey agar otomatis refetch sfaat ketik
+    queryKey: ['logMesin', searchLogMesin, page, pageSize, activeLogFilter], 
+    queryFn: () => getLogMesin(searchLogMesin, page, pageSize, activeLogFilter),
   });
-  const { data: dataSummary, isLoading: isLoadingSummary, error: errorSummary } = useQuery({
-    // Sangat penting: masukkan searchTerm ke queryKey agar otomatis refetch saat ketik
-    queryKey: ['summary', summaryRange, activeSumFilter === 'custom' ? 'all-custom' : activeSumFilter], 
-    queryFn: () => getSumary(activeSumFilter, summaryRange?.startDate, summaryRange?.endDate),
+  const { data: dataDashboard, isLoading: isLoadingDashboard, error: errorDataDashboard } = useQuery({
+    queryKey: ['dashboard', summaryRange, activeSumFilter === 'custom' ? 'all-custom' : activeSumFilter], 
+    queryFn: () => getDataDashboard(activeSumFilter, summaryRange?.startDate, summaryRange?.endDate),
   });
 
   const chartData = {
@@ -145,8 +136,6 @@ export default function Home() {
   const formatIDR = new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
-    // Jika ingin menghilangkan ,00 di belakang:
-    // minimumFractionDigits: 0, 
   });
   
   useEffect(() => {
@@ -185,8 +174,10 @@ export default function Home() {
     return `${prefix}${angka}%`;
   };
 
+  
+
   useEffect(() => {
-    if (!dataSummary) return;
+    if (!dataDashboard?.data_summary) return;
 
     const formatMap: Record<string, string> = {
       hari: "YYYY-MM-DD",
@@ -204,21 +195,19 @@ export default function Home() {
       .tz("Asia/Jakarta")
         .format(currentFormat);;
 
-      console.log("prevKey:", prevKey);
-      console.log("nowKey:", nowKey);
     
     
-      const sortedEntries = Object.entries(dataSummary).sort(([a], [b]) =>
+      const sortedEntries = Object.entries(dataDashboard.data_summary).sort(([a], [b]) =>
         a.localeCompare(b)
       );
       setLabelChart(sortedEntries.map(([key]) => key));
-      setValueChart(Object.values(dataSummary as Record<string, any>).map((value) => value.totalOmset || 0));
+      setValueChart(Object.values(dataDashboard.data_summary as Record<string, any>).map((value) => value.totalOmset || 0));
 
       if(activeSumFilter === "custom"){
         const data:Record<string, { totalOmset: number;
           totalTransaksi: number;
           totalTransaksiGagal: number;
-          totalTransaksiBerhasil: number;}> = dataSummary;
+          totalTransaksiBerhasil: number;}> = dataDashboard.data_summary;
       const result = Object.values(data).reduce<Record<string, number>>(
         (acc, curr) => {
           Object.keys(curr).forEach((key) => {
@@ -232,11 +221,11 @@ export default function Home() {
 
         setDataSummarySekarang(result);
       }else{
-        setDataSummarySekarang(dataSummary[nowKey] || null);
+        setDataSummarySekarang(dataDashboard.data_summary[nowKey] || null);
       }
 
-      setDataSummaryKemarin(dataSummary[prevKey] || null);
-  }, [dataSummary]);
+      setDataSummaryKemarin(dataDashboard.data_summary[prevKey] || null);
+  }, [dataDashboard]);
 
   return (
     <div className="p-6">
@@ -288,7 +277,7 @@ export default function Home() {
                 <ChartSpline  size={20}/>
                 <h2 className='text-lg ' >OMSET</h2> 
               </div>
-              {errorSummary && (
+              {errorDataDashboard && (
                   <div className="rounded-lg  mb-2 bg-blue-50 dark:bg-slate-700/80 w-40">
                       Gagal Memuat Data: {(error as any).message}
                   </div>
@@ -316,7 +305,7 @@ export default function Home() {
                 <h2 className='text-lg ' >ORDER</h2> 
           
               </div>
-               {errorSummary && (
+               {errorDataDashboard && (
                   <div className="rounded-lg  mb-2 bg-blue-50 dark:bg-slate-700/80 w-40">
                       Gagal Memuat Data: {(error as any).message}
                   </div>
@@ -362,18 +351,18 @@ export default function Home() {
               </div>
             </div>
             <div className="bg-blue-50/50 flex-1 dark:bg-slate-900 overflow-hidden  h-fit w-full relative">
-              <div className="max-h-[420px] overflow-y-auto">
+              <div className="max-h-[238px] overflow-y-auto">
                 {isLoading ? (
                   <div className="text-center py-12 text-sm text-gray-400">
                     Memuat log...
                   </div>
                   ) : (
-                    logMesin.data.length === 0 ? (
+                    (logMesin.data ?? [] ).length === 0 ? (
                       <div className="text-center py-12 text-sm text-gray-400">
                         Tidak ada log yang cocok.
                       </div>
                     ) : (
-                      logMesin.data.map((log: any) => <LogRow key={log.id} log={log} />)
+                      (logMesin.data ?? []).map((log: any) => <LogRow key={log.id} log={log} />)
                     )
                   )}
                   {error && (
@@ -388,7 +377,7 @@ export default function Home() {
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-gray-500 dark:text-gray-400">
                       
-                      {logMesin.data.length === 0 ? "0 entries" : `${logMesin.metadata.awalEntri}–${logMesin.metadata.akhirEntri} dari ${logMesin.metadata.totalData}`}
+                      {(logMesin.data ?? []).length === 0 ? "0 entries" : `${logMesin.metadata.awalEntri}–${logMesin.metadata.akhirEntri} dari ${logMesin.metadata.totalData}`}
                  
                   </span>
                  
@@ -406,90 +395,86 @@ export default function Home() {
                             {n}
                         </option>
                         ))}
-                        <option key={logMesin.metadata.totalData} value={logMesin.metadata.totalData}>
+                        <option key={logMesin.metadata.totalData || 0} value={logMesin.metadata.totalData || 0}>
                             Semua
                         </option>
                       </select>
                     </div>
 
                 </div>
-    
-                <Pagination page={page} totalPages={logMesin.metadata.totalPages} onPageChange={setPage} />
+                        
+                <Pagination page={page} totalPages={logMesin.metadata.totalPages || 0} onPageChange={setPage} />
                 
               </div>
               )}
             </div>
           </div>
       </div>
+      <div className='grid grid-cols-1 md:grid-cols-2 mt-6 gap-6'>
+        <div className=" bg-white dark:bg-slate-800 border-2 border-blue-100 dark:border-blue-950 rounded-lg items-center justify-center p-7">
+          <div className='mb-6'>
+            
+          <h2 className="text-lg font-bold text-blue-500 dark:text-gray-300">STATISTIK OMSET</h2>
+          <p className='text-sm text-blue-500 dark:text-gray-400'>Informasi omset dari waktu ke waktu</p>
+          </div>
+            { isLoadingDashboard ? (
+              <div className="py-6">
+              <div className="flex items-end gap-0 h-80 relative">
 
-      <div className="mt-6 bg-white dark:bg-slate-800 border-2 border-blue-100 dark:border-blue-950 rounded-lg items-center justify-center p-7">
-        <h2 className="text-lg font-bold text-blue-500 dark:text-gray-300 mb-3">STATISTIK OMSET</h2>
-          { isLoadingSummary ? (
-            <div className="py-6">
-            <div className="flex items-end gap-0 h-80 relative">
-
-              
-              <div className="flex flex-col justify-between h-full pr-3 pb-6">
-                {yLabels.map((_, i) => (
-                  <div
-                    key={i}
-                    className="w-16 h-3 rounded bg-gray-200 animate-pulse"
-                  />
-                ))}
-              </div>
-              <div className="flex-1 flex flex-col relative">
-
-                {/* Grid lines */}
-                <div className="flex-1 flex flex-col justify-between border-l border-gray-200">
+                
+                <div className="flex flex-col justify-between h-full pr-3 pb-6">
                   {yLabels.map((_, i) => (
-                    <div key={i} className="w-full h-px bg-gray-200" />
-                  ))}
-                </div>
-                <div className="flex justify-around pt-2">
-                  {xLabels.map((_, i) => (
                     <div
                       key={i}
-                      className="w-11 h-3 rounded bg-gray-200 animate-pulse"
+                      className="w-16 h-3 rounded bg-gray-200 animate-pulse"
                     />
                   ))}
                 </div>
+                <div className="flex-1 flex flex-col relative">
+
+                  {/* Grid lines */}
+                  <div className="flex-1 flex flex-col justify-between border-l border-gray-200">
+                    {yLabels.map((_, i) => (
+                      <div key={i} className="w-full h-px bg-gray-200" />
+                    ))}
+                  </div>
+                  <div className="flex justify-around pt-2">
+                    {xLabels.map((_, i) => (
+                      <div
+                        key={i}
+                        className="w-11 h-3 rounded bg-gray-200 animate-pulse"
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-          ): (
+            ): (
 
-              <div className="relative w-full min-w-0 h-90">
-                <Bar key={isDark ? 'dark' : 'light'} data={chartData} options={options} />
-              </div>
-          )}
-          
+                <div className="relative w-full min-w-0 h-90">
+                  <Bar key={isDark ? 'dark' : 'light'} data={chartData} options={options} />
+                </div>
+            )}
+            
 
-      </div>
-    </div>
-
-  );
-}
-
-function LogRow({ log }: any) {
-  const style = filterLogStyles[log.tipe as keyof typeof filterLogStyles] || { badge: "bg-gray-100 text-gray-600 dark:bg-gray-400/40 dark:text-gray-200 dark:border dark:border-gray-500", dot: "bg-gray-400" };
-  return (
-    <div key={log.id} className="flex items-start gap-3 px-4 py-3 border-b border-blue-200 dark:border-gray-700 hover:bg-blue-100/50 dark:hover:bg-slate-950 transition-colors duration-100 last:border-b-0">
-      <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${style.dot}`} />
-      <span className="text-xs text-gray-400 font-mono pt-0.5 min-w-[68px] shrink-0">
-        {dayjs(log.created_at).format('dddd, DD MMMM YYYY HH:mm')}
-      </span>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${style.badge}`}>
-            {log.tipe}
-          </span>
-          <span className="text-[12px] font-bold text-gray-400 dark:text-gray-400 font-mono truncate">{log.mesin.nama} :</span>
-          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{log.payload.message}</p>
         </div>
+        <div className='bg-white dark:bg-slate-800 border-2 border-blue-100 dark:border-blue-950 rounded-lg items-center justify-center p-7'>
+          
+          <h2 className="text-lg font-bold text-blue-500 dark:text-gray-300">LOKASI MESIN</h2>
+          <p className='text-sm text-blue-500 dark:text-gray-400'>informasi lokasi dan status mesin yang tersebar</p>
+          <div className='relative mt-7'>
+            { !isLoadingDashboard ? <MapContainer locations={dataDashboard.data_mesin}/> :  null}
+          </div>
+
+        </div>
+
       </div>
     </div>
+
   );
 }
+
+
 
 function Pagination({ page, totalPages, onPageChange }: any) {
   const getPages = () => {

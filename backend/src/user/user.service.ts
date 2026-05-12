@@ -5,17 +5,20 @@ import { SupabaseService } from 'src/supabase/supabase.service';
 export class UserService {
     constructor(private supabaseService: SupabaseService){}
 
-    async findAll(page: number, limit: number, sortAsc: boolean, sortKey?: string, search?: string, role?: string ) {
+    async findAll(page?: number, limit?: number, sortAsc?: boolean, sortKey?: string, search?: string, role?: string ) {
       const supabase = this.supabaseService.getClient();
       try{
 
-        const from = (page - 1) * limit;
-        const to = from + limit - 1;
         let query = supabase
           .from('user_profiles')
           .select(`*`)
-          .range(from, to)
-    
+
+          
+        if(page && limit){ 
+            const from = (page - 1) * limit;
+            const to = from + limit - 1;
+            query = query.range(from, to)
+        }
         if(role && role != "all"){
           query = query.eq("role", role);
         }
@@ -57,7 +60,7 @@ export class UserService {
             totalDataAdmin: countAdmin,
             totalDataTeknisi: countTeknisi,
             currentPage: Number(page),
-            totalPages: Math.ceil((count ?? 0) / limit),
+            totalPages: Math.ceil((count ?? 0) / (limit || 0)),
             pageSize: limit,
           }
         };
@@ -65,7 +68,19 @@ export class UserService {
         return {success: false, message: err.response.message || "Kegagalan Sistem", code: err.status};
       }
     }
+    async getUserProfiles(id: string){
+      const supabase = this.supabaseService.getClient();
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', id)
+        .single();
 
+      if(error){
+        throw new InternalServerErrorException(error.message || "Gagal mengambil data profile");
+      }
+      return data;
+    }
     // user.service.ts 
     async registerUser(userData: any, pasFoto: Express.Multer.File) {
       const supabase = this.supabaseService.getClient();

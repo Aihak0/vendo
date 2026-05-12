@@ -9,15 +9,27 @@ import { Ctx, MessagePattern, MqttContext, NatsContext, Payload } from '@nestjs/
 export class MesinController {
     constructor(private readonly mesinService: MesinService, @Inject('HIVE_CLIENT') private client: ClientProxy,){}
     @Get()
-    @UseGuards(AuthGuard)
-    async findAll(@Query('page', ParseIntPipe) page: number = 1, @Query('limit', ParseIntPipe) limit: number = 10, @Query('sortAsc', new ParseBoolPipe({ optional: true })) sortAsc: boolean, @Query('sortKey') sortKey?: string,  @Query('search') search?: string, @Query('status') status?: string){
+    // @UseGuards(AuthGuard)
+    async findAll(@Query('page', new ParseIntPipe({ optional: true})) page: number, @Query('limit', new ParseIntPipe({ optional: true})) limit: number, @Query('sortAsc', new ParseBoolPipe({ optional: true })) sortAsc: boolean, @Query('sortKey') sortKey?: string,  @Query('search') search?: string, @Query('status') status?: string){
       return await this.mesinService.findAll(page, limit, sortAsc, sortKey, search, status);
     }
 
+    @Get('managed-by')
+    // @UseGuards(AuthGuard)
+    async findManaged(@Query('teknisi_id') teknisi_id: string){
+      return await this.mesinService.findManagedMesin(teknisi_id);
+    }
+ 
     @Get("logs")
     @UseGuards(AuthGuard, RolesGuard)
-    async findAllLogs(@Query('page') page: number, @Query('limit') limit: number, @Query('search') search: string){
-      return await this.mesinService.findAllLogs(page, limit, search);
+    async findAllLogs(@Query('page', new ParseIntPipe({ optional: true})) page: number, @Query('limit', new ParseIntPipe({ optional: true})) limit: number, @Query('search') search: string, @Query('filter') filter: string){
+      return await this.mesinService.findAllLogs(page, limit, search, filter);
+    }
+
+    @Get("managed-logs")
+    // @UseGuards(AuthGuard)
+    async findAllLogsManagedMesin(@Query('teknisi_id') teknisi_id: string, @Query('filter') filter: string){
+      return await this.mesinService.findManagedMesinLog(teknisi_id, filter);
     }
 
     @Post('add')

@@ -1,16 +1,22 @@
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { useState, useRef, useEffect, useCallback, type MouseEvent } from "react";
 import { useAlert } from "../../UiElements/Alert";
-import { FolderPen, Square, Loader2, Plus, Circle, ChevronsDown, Minus} from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { addMesin } from "../../../services/api";
+import { FolderPen, Square, Loader2, Plus, Circle, ChevronsDown, Minus, ChevronDown, Check, X} from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { addMesin, getUser } from "../../../services/api";
 import { type DragState, type SlotRow, type MesinAddModalProps } from "./Interface";
 import { colToLetter, getDragState } from "./proses";
 import MapPicker from "../../../components/MapsPicker";
+import { Label, Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react'
 
 
 
 export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
+    const { data: teknisi, isLoading: loadingTeknisi , error: errorTeknisi} = useQuery({
+        // Sangat penting: masukkan searchTerm ke queryKey agar otomatis refetch saat ketik
+        queryKey: ['teknisi'], 
+        queryFn: () => getUser(undefined, undefined, undefined, undefined, undefined, "teknisi")
+    });
     const dragRef = useRef<DragState>({ active: false, startR: null, startC: null, curC: null });
     const queryClient = useQueryClient();
     const [loading, setLoading] = useState(false);
@@ -24,6 +30,8 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
     const [slot, setSlot] = useState<SlotRow[]>([]);
     
     const [latitude, setLatitude] = useState<number>(-6.2000);
+    // const [teknisiMesin, setTeknisiMesin] = useState<Teknisi>();
+    const [teknisiMesin, setTeknisiMesin] = useState<any>([]);
     const [longitude, setLongitude] = useState<number>(106.8166);
     const [lokasi, setLokasi] = useState("");
     const [desa, setDesa] = useState("");
@@ -67,6 +75,13 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
     function resetForm() {
         setNama("");
         setLokasi("");
+        setTeknisiMesin([]);
+        setDesa("");
+        setKecamatan("");
+        setKabupaten("");
+        setProvinsi("");
+        setNegara("");
+        setKodePos("");
     }
     const handleLocationChange = (coords: any) => {
         console.log("Lokasi diterima di Halaman Utama:", coords);
@@ -319,6 +334,7 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
         e.preventDefault(); 
         setLoading(true);
 
+        const IdTeknisi = teknisiMesin.map((t: any) => t.user_id);
         const payload = {
             nama: nama,
             rows: rows, 
@@ -331,6 +347,7 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
             kabupaten: kabupaten,
             provinsi: provinsi,
             negara: negara,
+            teknisi: IdTeknisi,
             kode_pos: kodePos
         };
         mutation.mutate(payload);
@@ -339,7 +356,6 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
     useEffect(() => {
         handleReset();
     },[]);
-
     return(
         <Dialog open={isOpen} onClose={onClose} className="relative z-50">
             <DialogBackdrop className="fixed inset-0 bg-zinc-900/50 transition-opacity"/>
@@ -378,6 +394,107 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
                                     
                                     </div>
                                 </div> 
+                                 <div className="mb-3">
+                                    <Listbox value={teknisiMesin} onChange={setTeknisiMesin} multiple>
+                                        <Label className="block font-medium text-xs">Teknisi Mesin</Label>
+                                        <div className="relative mt-2 cursor-pointer">
+                                        <ListboxButton className="grid w-full cursor-default grid-cols-1 rounded-md bg-blue-50/50 dark:bg-slate-900 py-1.5 pr-2 pl-3 text-left dark:text-white border border-blue-100 dark:border-slate-700 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500 sm:text-sm/6 cursor-pointer min-h-9">
+                                            <span className="col-start-1 row-start-1 flex flex-wrap items-center gap-1.5 pr-6">
+                                            {teknisiMesin.length > 0 ? (
+                                                teknisiMesin.map((t: any) => (
+                                                <span
+                                                    key={t.user_id}
+                                                    className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 dark:bg-blue-950 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300"
+                                                >
+                                                    <img
+                                                    alt=""
+                                                    src={t.urlPasfoto}
+                                                    className="size-4 shrink-0 rounded-full bg-gray-700 outline -outline-offset-1 outline-white/10"
+                                                    />
+                                                    <span>{t.nama}</span>
+                                                    {/* Tombol hapus per item */}
+                                                    <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // Jangan trigger Listbox
+                                                        setTeknisiMesin((prev: any[]) =>
+                                                        prev.filter((item) => item.user_id !== t.user_id)
+                                                        );
+                                                    }}
+                                                    className="ml-0.5 text-blue-400 hover:text-blue-600 dark:hover:text-blue-200"
+                                                    >
+                                                    <X className="size-3" aria-hidden="true" />
+                                                    </button>
+                                                </span>
+                                                ))
+                                            ) : (
+                                                <span className="block truncate cursor-pointer text-gray-400 dark:text-gray-500">
+                                                Pilih teknisi
+                                                </span>
+                                            )}
+                                            </span>
+                                            <ChevronDown
+                                            aria-hidden="true"
+                                            className="col-start-1 row-start-1 size-5 self-center justify-self-end text-blue-300 dark:text-gray-400 sm:size-4"
+                                            />
+                                        </ListboxButton>
+
+                                        <ListboxOptions
+                                            transition
+                                            className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md bg-white dark:bg-slate-900 py-1 text-base border border-blue-100 dark:border-slate-700 shadow-lg data-leave:transition data-leave:duration-100 data-leave:ease-in data-closed:data-leave:opacity-0 sm:text-sm"
+                                        >
+                                            {loadingTeknisi ? (
+                                            <ListboxOption
+                                                value=""
+                                                className="group relative cursor-default py-2 pr-9 pl-3 dark:text-white select-none data-focus:bg-slate-500 data-focus:outline-hidden cursor-pointer"
+                                            >
+                                                <div className="flex items-center">
+                                                <span className="ml-3 block truncate font-normal">loading data...</span>
+                                                </div>
+                                            </ListboxOption>
+                                            ) : (
+                                            teknisi.data.map((t: any) => (
+                                                <ListboxOption
+                                                key={t.user_id}
+                                                value={t}
+                                                className="group relative cursor-default py-2 pr-9 pl-3 dark:text-white select-none data-focus:bg-blue-500 dark:data-focus:bg-blue-950 data-focus:outline-hidden cursor-pointer"
+                                                >
+                                                <div className="flex items-center">
+                                                    <img
+                                                    alt=""
+                                                    src={t.urlPasfoto}
+                                                    className="size-5 shrink-0 rounded-full outline -outline-offset-1 outline-white/10"
+                                                    />
+                                                    <span className="ml-3 block truncate font-normal group-data-selected:font-semibold">
+                                                    {t.nama}
+                                                    </span>
+                                                    <span className="ml-3 block truncate text-gray-500 text-xs font-normal group-data-selected:font-semibold">
+                                                    {t.email}
+                                                    </span>
+                                                </div>
+
+                                                <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-blue-600 group-not-data-selected:hidden group-data-focus:text-white">
+                                                    <Check aria-hidden="true" className="size-4" />
+                                                </span>
+                                                </ListboxOption>
+                                            ))
+                                            )}
+
+                                            {errorTeknisi && (
+                                            <ListboxOption
+                                                value=""
+                                                className="group relative cursor-default py-2 pr-9 pl-3 text-red-500 select-none data-focus:bg-indigo-500 data-focus:outline-hidden"
+                                            >
+                                                <div className="flex items-center">
+                                                <span className="ml-3 block truncate font-normal">Gagal Mengambil data</span>
+                                                </div>
+                                            </ListboxOption>
+                                            )}
+                                        </ListboxOptions>
+                                        </div>
+                                    </Listbox>
+                                    </div>
+        
                                 
                                 <div className="mb-0 w-full mb-13">
                                    

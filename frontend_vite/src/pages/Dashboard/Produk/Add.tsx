@@ -4,11 +4,7 @@ import { useAlert } from "../../UiElements/Alert";
 import { FolderPen, Square, Loader2, Plus, Circle, CloudUpload} from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { addProduct } from "../../../services/api";
-
-interface ProdukAddModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-}
+import { type ProdukAddModalProps } from "./interface";
 
 export function ProdukAdd ({isOpen, onClose} : ProdukAddModalProps){
     const queryClient = useQueryClient();
