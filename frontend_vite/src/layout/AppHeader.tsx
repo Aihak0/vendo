@@ -1,6 +1,6 @@
 import {  useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ChevronRight, ArrowLeftFromLine, SunMedium, Eclipse, SunMoon } from "lucide-react";
+import { ChevronRight, ArrowLeftFromLine, SunMedium, Eclipse, SunMoon, CircleUser } from "lucide-react";
 
 import LogoDark from "../assets/LogoDark.png";
 import LogoLight from "../assets/LogoLight.png";
@@ -105,6 +105,9 @@ export function Header() {
                 onClick={() => setOpenDropdown(!openDropdown)}
                 onBlur={() => setTimeout(() => setOpenDropdown(false), 200)}
               >
+                {profile.urlPasfoto &&
+                <img src={profile.urlPasfoto} alt="" className="w-7 h-7 rounded-full" />
+                }
                 <span>Hai {profile?.nama || profile?.email || "anda belum login"}
                   👋
                 </span>
@@ -141,7 +144,14 @@ export function Header() {
                       Sistem
                     </button>
                     
+                    
                     <hr className="my-1 border-1 border-blue-100 dark:border-blue-950" />
+                    <Link
+                        to={`/profile`}
+                        className={`flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-blue-50/50 dark:hover:bg-slate-900 dark:text-gray-300`}>
+                        <CircleUser size={16} className="mr-2" />
+                          Profile
+                    </Link>
                     <button onClick={handlelogout} className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30">
                       <ArrowLeftFromLine size={16} className="mr-2" />
                       Keluar

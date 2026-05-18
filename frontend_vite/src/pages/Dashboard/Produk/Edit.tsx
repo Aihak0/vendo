@@ -4,7 +4,7 @@ import { useAlert } from "../../UiElements/Alert";
 import { FolderPen, Loader2, PenLine, Circle, Square, CloudUpload } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateProduct } from "../../../services/api"; // Ganti ke updateProduct
-import { type Produk, type ProdukEditModalProps } from "./interface";
+import { type ProdukEditModalProps } from "./interface";
 
 export function ProdukEdit({ isOpen, onClose, dataEdit }: ProdukEditModalProps) {
     const queryClient = useQueryClient();

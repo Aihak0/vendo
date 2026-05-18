@@ -290,6 +290,16 @@
     display: none;
     -webkit-appearance: none;
   }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Menghilangkan scrollbar untuk IE, Edge, dan Firefox */
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
 }
 
 .tableCheckbox:checked ~ span span {
@@ -796,3 +806,4 @@ span.flatpickr-weekday,
 .gm-style * {
   cursor: pointer !important;
 }
+

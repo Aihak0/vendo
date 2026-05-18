@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import type { MesinInfoModalProps, MesinMaintenanceModalProps } from "./interface";
+import type { MesinMaintenanceModalProps } from "./interface";
 import type { Column, SlotRow } from "../../Dashboard/Mesin/Interface";
 
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { Circle, Info, Loader2, Minus, Plus, Square } from "lucide-react";
-import { MapContainer } from "../../../components/MapLokasi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getProducts, updatedSlot } from "../../../services/api";
 import { useAlert } from "../../UiElements/Alert";
@@ -337,6 +336,10 @@ export function MesinMaintenanceModal({isOpen, onClose, dataMesin}: MesinMainten
                                 </div>
                               </>
                             ) }
+
+                            {errorGetProduk && (
+                                <p className="text-red-500">Gagal memuat produk</p>
+                            )}
                           </div>
                         </div>
                        <div className="flex bottom-0 w-full">

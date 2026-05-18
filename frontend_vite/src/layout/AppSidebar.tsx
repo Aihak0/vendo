@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { LayoutDashboard, Settings, LogOut, Apple, Calculator, UserRound, ArrowUp01, Receipt, Loader, List } from "lucide-react";
+import { LayoutDashboard, ListCheck, LogOut, Apple, Calculator, UserRound, ArrowUp01, Receipt, List } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from 'react-router-dom';
 
@@ -107,6 +107,13 @@ export function AppSidebar() {
                   icon={<LayoutDashboard size={22} />} 
                   isActive={pathnames === "/teknisi/dashboard"}
                   label="Dashboard" 
+                  isOpen={isOpen} 
+                />
+                <NavItem 
+                  href={`/teknisi/task`}
+                  icon={<ListCheck size={22} />} 
+                  isActive={pathnames === "/teknisi/task"}
+                  label="Task" 
                   isOpen={isOpen} 
                 />
               </>

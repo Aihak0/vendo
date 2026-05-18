@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getTask } from "../../../services/api";
 import { useEffect, useState } from "react";
 import { FilterDropdown } from "../../../components/ui/dropdown/Dropdown";
-import { Clock, Activity, CheckCircle, XCircle, Wrench, ChevronDown, Search, Plus, PenLine, Table, Trash, Check } from "lucide-react";
+import { Clock, Activity, CheckCircle, XCircle, Wrench, ChevronDown, Search, Plus, PenLine, Trash, Check } from "lucide-react";
 import dayjs from 'dayjs';
 import 'dayjs/locale/id';
 import { TaskAdd } from "./Add";

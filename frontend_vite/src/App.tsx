@@ -14,10 +14,12 @@ import TransaksiPage from "./pages/Dashboard/Transaksi/Page";
 import PergerakanStockPage from "./pages/Dashboard/PergerakanStock/Page";
 import PageDashboardTeknisi from "./pages/Teknisi/Dashboard/Page";
 import TaskManagementPage from "./pages/Dashboard/Task/Page";
+import TaskPage from "./pages/Teknisi/Task/Page";
+import ProfilePage from "./pages/ProfilePage";
 
 function AppContent() {
   const location = useLocation();
-  const validPaths = ['/', '/login', '/dashboard', '/produk', '/mesin', '/user', '/transaksi', '/pergerakan-stock', '/task','/teknisi/dashboard'];
+  const validPaths = ['/', '/login', '/dashboard', '/produk', '/mesin', '/user', '/transaksi', '/pergerakan-stock', '/task','/teknisi/dashboard', '/teknisi/task', '/profile'];
   const isLoginPage = location.pathname === '/login';
   const isLandingPage = location.pathname === '/';
   const isNotFound = !validPaths.includes(location.pathname);
@@ -59,6 +61,7 @@ function AppContent() {
             <Routes>
             
               <Route element={<ProtectedRoute/>}>
+                  <Route path="/profile" element={<ProfilePage />} />
                 <Route element={<ProtectedRouteAdmin/>}>
                   <Route path="/dashboard" element={<Home />} />
                   <Route path="/produk" element={<ProductPage />} />
@@ -70,6 +73,7 @@ function AppContent() {
                 </Route>
                 <Route element={<ProtectedRouteTeknisi />}>
                   <Route path="/teknisi/dashboard" element={<PageDashboardTeknisi />} />
+                  <Route path="/teknisi/task" element={<TaskPage />} />
                 </Route>
               </Route>
               

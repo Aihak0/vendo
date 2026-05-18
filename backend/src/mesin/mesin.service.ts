@@ -100,7 +100,8 @@ export class MesinService {
       .from("mesin_teknisi").select("...mesin(*, slot(*, produk(nama, img_url)))")
       .eq("teknisi_id", teknisi_id);
 
-      if(errManagedMesin || dataManagedMesin.length == 0){
+      if(errManagedMesin ){
+         console.error("Error fetching log_mesin for teknisi:", errManagedMesin);
         throw new InternalServerErrorException(errManagedMesin?.message || "Data tidak ditemukan");
       } 
 
@@ -122,7 +123,9 @@ export class MesinService {
       }
 
       const { data, error } = await query;
-      if(error) throw new InternalServerErrorException(error.message || "Gagal mengambil data log");
+      if(error) {
+        console.error("Error fetching log_mesin for teknisi:", error);
+        throw new InternalServerErrorException(error.message || "Gagal mengambil data log")};
 
       return data;
     }
@@ -167,6 +170,7 @@ export class MesinService {
           countDebug = 0;
         }
         if (error) {
+          console.error("Error fetching log_mesin:", error);
           // Gunakan InternalServerErrorException karena ini biasanya masalah query/database
           throw new InternalServerErrorException(error.message);
         }

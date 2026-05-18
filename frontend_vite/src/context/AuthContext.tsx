@@ -13,6 +13,7 @@ interface AuthContextType {
   isLoggingOut: boolean;
   login: (email: string, password: string) => Promise<any>;
   logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,6 +47,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   };
 
+  const refreshProfile = async () => {
+    if (user) {
+      await fetchProfile(user.id);
+    }
+  };
+
 
   useEffect(() => {
     let mounted = true;
@@ -65,7 +72,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // 2. Pasang listener untuk perubahan status (login/logout/token refresh)
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
         if (session?.user) {
           setUser(session.user);
           if (!profile) {
@@ -123,7 +130,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
 // if (loading) return <div>Memuat Sesi...</div>;
 return (
-  <AuthContext.Provider value={{ user, login, logout, loading, profile, isLoggingOut }}>
+  <AuthContext.Provider value={{ user, login, logout, loading, profile, isLoggingOut, refreshProfile }}>
     {children}
   </AuthContext.Provider>
 );

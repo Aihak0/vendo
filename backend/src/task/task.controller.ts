@@ -19,9 +19,14 @@ export class TaskController {
     async update(@Body() body: any, @Param('id') id: string){
         return await this.taskService.update(id, body);
     }
+
+    @Get('my-task')
+    async myTask(@Query('teknisi_id') id: string, @Query('prioritas') prioritas?: string){
+        return await this.taskService.findAllMyTask(id, prioritas);
+    }
     @Patch('update_status/:id')
-    async updateStatus(@Query('id') id: string, @Body('status') status: string){
-        return await this.taskService.updateStatus(id, status);
+    async updateStatus(@Param('id') id: string, @Body() body: any){
+        return await this.taskService.updateStatus(id, body);
     }
 
     @Post('delete')

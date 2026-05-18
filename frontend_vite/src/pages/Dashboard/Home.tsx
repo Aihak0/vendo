@@ -3,7 +3,7 @@ import { ChartSpline, Cannabis, Calendars, CalendarDays, CalendarSync, CalendarC
 import { useAuth } from '../../context/AuthContext';
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getDataDashboard, getLogMesin, getSumary } from '../../services/api';
+import { getDataDashboard, getLogMesin } from '../../services/api';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { type DateValueType } from "react-tailwindcss-datepicker";

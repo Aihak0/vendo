@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useAuth } from "../../context/AuthContext";
-import { ChevronLeftIcon, EyeClosed, EyeIcon, FolderPen, Mail, Lock } from "lucide-react";
+import { ChevronLeftIcon, EyeClosed, EyeIcon, Mail, Lock } from "lucide-react";
 
 export default function SignInForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isChecked, setIsChecked] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 

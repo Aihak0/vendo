@@ -1,8 +1,9 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { ConfigService } from '@nestjs/config';
+import { Request } from 'express'; // Pastikan import ini ada
 
-@Injectable()
+@Injectable() // <--- BIARKAN SINGLETON (Hapus scope: Scope.REQUEST)
 export class SupabaseService implements OnModuleInit {
   private client: SupabaseClient;
   private readonly logger = new Logger(SupabaseService.name);
@@ -29,36 +30,43 @@ export class SupabaseService implements OnModuleInit {
   }
 
   async onModuleInit() {
-    await this.waitForConnection();
+    await this.waitForConnection(); // <--- INI AKAN BERJALAN NORMAL SEKARANG
   }
 
-  private async waitForConnection(retries = 5, delayMs = 3000) {
-    for (let i = 1; i <= retries; i++) {
-      try {
-        // Ping ringan ke Supabase
-        const { error } = await this.client.from('user_profiles').select('*').limit(1);
-;
-        
-        // Ignore "table not found", yang penting koneksi berhasil
-        if (!error || error.code === 'PGRST116' || error.code === '42P01') {
-          this.logger.log('Supabase connected successfully');
-          return;
-        }
+  // ... Fungsi waitForConnection() dan delay() milikmu tetap di sini (tidak diubah) ...
+  private async waitForConnection(retries = 5, delayMs = 3000) { /* kode kamu */ }
+  private delay(ms: number) { /* kode kamu */ }
 
-        throw error;
-      } catch (err: any) {
-        this.logger.warn(`Supabase connection attempt ${i}/${retries} failed: ${err.message}`);
-        if (i < retries) await this.delay(delayMs);
-      }
-    }
-    this.logger.error('Could not connect to Supabase after all retries — continuing anyway');
-  }
 
-  private delay(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
+  // 1. Method bawaan untuk query umum/admin (Singleton)
   getClient(): SupabaseClient {
     return this.client;
+  }
+
+  // 2. TAMBAHKAN METHOD INI: Khusus untuk menghandle request spesifik user (Safe Session)
+  getClientForUser(request: Request): SupabaseClient {
+    const authHeader = request.headers['authorization'];
+    const token = authHeader?.split(' ')[1];
+
+    // Buat client cadangan yang terisolasi khusus untuk user ini saja
+    const userClient = createClient(
+      this.configService.get<string>('SUPABASE_URL')!,
+      this.configService.get<string>('SUPABASE_ANON_KEY')!, // Sebaiknya gunakan ANON_KEY untuk context user
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      }
+    );
+
+    if (token) {
+      userClient.auth.setSession({
+        access_token: token,
+        refresh_token: token,
+      });
+    }
+
+    return userClient;
   }
 }

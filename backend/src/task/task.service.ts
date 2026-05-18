@@ -15,7 +15,6 @@ export class TaskService {
             .from('task')
             .select(`*, mesin(id, nama), ...task_teknisi(ditugaskan_ke:user_profiles(user_id, nama, email, user_id, urlPasfoto))`)
             .range(from, to)
-            console.log("prioritas", prioritas)
 
             if(status && status != "all"){
                 query = query.eq("status", status)
@@ -81,6 +80,71 @@ export class TaskService {
                     currentPage: page,
                     totalPages: Math.ceil((count ?? 0) / limit),
                     pageSize: limit,
+                }
+            };
+        }catch(err: any){
+            // console.log(err);
+            throw err;
+            // return {success: false, message: err.response.message || "Kegagalan Sistem", code: err.status};
+        }
+
+    }
+
+    async findAllMyTask(id: string,  prioritas?: string) {
+        const supabase = this.supabaseService.getClient();
+        try{
+
+            let query = supabase
+            .from('task_teknisi')
+            .select(`...task(*, mesin(id, nama, status))`)
+            .eq('teknisi_id', id)
+            .order('created_at', { ascending: false });
+        
+            if(prioritas && prioritas != "all"){
+                query = query.eq("prioritas", prioritas)
+            }
+
+            const { data, error } = await query;
+
+            const { data: stats, error:errorStats , count} = await supabase
+            .from('task')
+            .select(`
+                status
+            `, { count: 'exact' });
+
+            let countPending;
+            let countInProgress;
+            let countAssigned
+            let countDone;
+            let countCancelled;
+            if(!errorStats){
+                countPending = stats.filter(u => u.status === 'pending').length;
+                countInProgress = stats.filter(u => u.status === 'in_progress').length;
+                countAssigned = stats.filter(u => u.status === 'assigned').length;
+                countDone = stats.filter(u => u.status === 'done').length;
+                countCancelled = stats.filter(u => u.status === 'cancelled').length;
+            }else{
+                countPending=0;
+                countInProgress=0;
+                countAssigned=0;
+                countDone=0;
+                countCancelled=0;
+            }
+            if (error) {
+                throw new InternalServerErrorException(error.message);
+            }
+            
+            
+            return {
+                success: true,
+                data,
+                metadata: {
+                    totalData: count,
+                    totalDataPending: countPending,
+                    totalDataInProgress: countInProgress,
+                    totalDataAssigned: countAssigned,
+                    totalDataDone: countDone,
+                    totalDataCancelled: countCancelled,
                 }
             };
         }catch(err: any){
@@ -203,18 +267,24 @@ export class TaskService {
         }
     }
 
-    async updateStatus(id: string, status: string){
+    async updateStatus(id: string, body: any){
         const supabase = this.supabaseService.getClient();
+        const { status, reason } = body;
         try{
-            if(status != 'canceled' && status != 'done' && status != 'in_progress' && status != 'assigned'){
+            if(status != 'cancelled' && status != 'done' && status != 'in_progress' && status != 'assigned'){
                 throw new BadRequestException("status tidak valid");
             }
             const { error } = await supabase.from('task')
-                .update({ status })
+                .update({ 
+                    status, 
+                    ...(status === 'cancelled' && { metadata: { reason } }),
+                    ...(status === 'done' && { waktu_selesai:  new Date().toISOString() }) 
+                })
                 .eq('id', id);
             if (error) throw new BadRequestException(error.message);
             return { success: true, message: "berhasil memperbarui status task", code: 200};
         }catch(err: any){
+            console.log(err);
             throw err;
         }
     }

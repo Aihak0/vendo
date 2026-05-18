@@ -1,9 +1,9 @@
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
-import { useState, useRef, useEffect, useCallback, type MouseEvent } from "react";
+import { useState, useEffect } from "react";
 import { useAlert } from "../../UiElements/Alert";
-import { FolderPen, Square, Loader2, Plus, Circle, ChevronsDown, Minus, ChevronDown, Check, X, Calendar, PenLine} from "lucide-react";
+import { FolderPen, Square, Loader2, Circle, ChevronDown, Check, X, Calendar, PenLine} from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { addMesin, addTask, getMesin, getUser, updateTask } from "../../../services/api";
+import { getMesin, getUser, updateTask } from "../../../services/api";
 import { type TaskEditModalProps } from "./Interface";
 import { Label, Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react'
 import { DatePicker, registerLocale } from "react-datepicker";
@@ -275,6 +275,59 @@ export function TaskEdit ({isOpen, onClose, dataEdit} : TaskEditModalProps){
                                             </div>
                                         </Listbox>
                                     </div>
+                                    <div className="mb-3">
+                                    
+                                        <Listbox value={prioritas} onChange={setPrioritas} >
+                                                <Label className="block font-medium text-xs m-0">Urgensi</Label>
+                                                <div className="relative mt-2 cursor-pointer m-0">
+                                                <ListboxButton className="grid w-full cursor-default grid-cols-1 rounded-md bg-blue-50/50 dark:bg-slate-900 py-1.5 pr-2 pl-3 text-left dark:text-white border border-blue-100 dark:border-slate-700 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500 sm:text-sm/6 cursor-pointer">
+                                                    <span className="col-start-1 row-start-1 flex items-center gap-3 pr-6 ">
+                                                    { prioritas ? (
+                                                        <>
+                                                            <span className="block truncate">{prioritas}</span>
+                                                        
+                                                        </>
+        
+                                                    ) : (
+                                                        <span className="block truncate cursor-pointer text-gray-400 dark:text-gray-500">Pilih tipe tugas</span>
+                                                    )}
+                                                    </span>
+                                                    <ChevronDown
+                                                        aria-hidden="true"
+                                                        className="col-start-1 row-start-1 size-5 self-center justify-self-end text-blue-300 dark:text-gray-400 sm:size-4"
+                                                        />
+                                                </ListboxButton>
+        
+                                                <ListboxOptions
+                                                    transition
+                                                    className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md bg-white dark:bg-slate-900 py-1 text-base border border-blue-100 dark:border-slate-700 shadow-lg data-leave:transition data-leave:duration-100 data-leave:ease-in data-closed:data-leave:opacity-0 sm:text-sm"
+                                                >
+                                                    
+                                                    {["low", "medium", "high", "urgent"].map((m) => (
+                                                        <ListboxOption
+                                                        key={m}
+                                                        value={m}
+                                                        className=" group relative cursor-default py-2 pr-9 pl-3 dark:text-white select-none data-focus:bg-blue-500 dark:data-focus:bg-blue-950 data-focus:outline-hidden cursor-pointer"
+                                                        >
+                                                            <div className="flex items-center ">
+                                                                <div className={`${m === "low" ? "bg-green-500" : m === "medium" ? "bg-yellow-500" : m === "high" ? "bg-orange-500" : "bg-red-500"} p-1 rounded-full`}/>
+                                                                <div className="flex items-center">
+                                                                    <span className="ml-3 block truncate font-normal group-data-selected:font-semibold">{m}</span>
+                                                        
+                                                                </div>
+                                                            </div>
+        
+                                                            <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-blue-600 group-not-data-selected:hidden group-data-focus:text-white">
+                                                                <Check aria-hidden="true" className="size-4" />
+                                                            </span>
+                                                        </ListboxOption>
+                                                    ))}
+                                                    
+                                                    
+                                                </ListboxOptions>
+                                                </div>
+                                            </Listbox>
+                                        </div>
                                     </>
                                 )}
                                 <div className="mb-3">

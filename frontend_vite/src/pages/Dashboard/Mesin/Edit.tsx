@@ -5,7 +5,7 @@ import { FolderPen, Square, Loader2, FilePen, Circle, ChevronDown, Plus, Minus, 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { updateMesin } from "../../../services/api"; // Ganti ke updateProduct
 import { colToLetter, getDragState } from "./proses";
-import { type DragState, type MesinEditModalProps, type SlotRow, type Teknisi } from './Interface'; 
+import { type DragState, type MesinEditModalProps, type SlotRow } from './Interface'; 
 import { Label, Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react'
 import {type MouseEvent } from "react";
 import MapPicker from "../../../components/MapsPicker";
@@ -118,7 +118,7 @@ export function ProdukEdit({ isOpen, onClose, dataEdit }: MesinEditModalProps) {
 
             groupedByRow.sort((a, b) => a.row_number - b.row_number);
 
-            const filteredTeknisi = teknisi?.data?.find((t: any) => t.user_id === dataEdit.teknisi_id);
+          
             setNama(dataEdit.nama);
             setLatitude(dataEdit.latitude);
             setLongitude(dataEdit.longitude);

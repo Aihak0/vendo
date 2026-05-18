@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { SupabaseService } from 'src/supabase/supabase.service';
+import { Request } from 'express';
 
 @Injectable()
 export class UserService {
@@ -214,63 +215,70 @@ export class UserService {
         return {success: false, message: err.response.message || "Kegagalan Sistem", code: err.status};
       }
     }
-    async updaetProfileByOwn(accessToken: string, id: string, nama?: string, email?: string, password?: string, pasFoto?: Express.Multer.File){
+
+    
+    async updaetProfileByOwn(accessToken: string, id: string, req: Request,  nama?: string, password?: string, pasFoto?: Express.Multer.File ){
       const supabase = this.supabaseService.getClient();
-      const { data: { user }, error: sessionError } = await supabase.auth.getUser(accessToken);
-      if (sessionError || !user) throw new Error('Sesi tidak valid');
 
-      // Mengupdate password
-      try{
-
+      // 1. SET SESSION TERLEBIH DAHULU MENGGUNAKAN ACCESS TOKEN DARI FRONTEND
+      // Ini krusial agar metode supabase.auth.updateUser() tahu sesi siapa yang sedang berjal
+      try {
         let urlPasfoto: string | undefined;
-        if(pasFoto){
-            const fileExt = pasFoto.originalname.split('.').pop();
-            const fileName = `${Date.now()}.${fileExt}`;
-            const filePath = `pasfoto/${id}/${fileName}`;
-            const {error: errorPasfoto} = await supabase.
-  
-            storage.from("gambar_private")
+
+        // Proses Upload Pas Foto
+        if (pasFoto) {
+          const fileExt = pasFoto.originalname.split('.').pop();
+          const fileName = `${Date.now()}.${fileExt}`;
+          const filePath = `pasfoto/${id}/${fileName}`;
+
+          const { error: errorPasfoto } = await supabase.storage
+            .from("gambar_private")
             .upload(filePath, pasFoto.buffer, {
               contentType: pasFoto.mimetype,
               upsert: true,
-            })
-  
-            if (errorPasfoto) throw new BadRequestException(errorPasfoto.message);
-  
-            
-            const { data: urlData } = supabase.storage
+            });
+
+          if (errorPasfoto) throw new BadRequestException(errorPasfoto.message);
+
+          const { data: urlData } = supabase.storage
             .from('gambar_private')
             .getPublicUrl(filePath);
-  
-            urlPasfoto = urlData.publicUrl
+
+          urlPasfoto = urlData.publicUrl;
+        }
+
+        // 2. SEKARANG INI AKAN BERJALAN AMAN TANPA ERROR "SESSION MISSING"
+          if (password) {
+            const userSupabase = this.supabaseService.getClientForUser(req);
+
+            const { error: errUpdatePassword } = await userSupabase.auth.updateUser({ password });
+            
+          if (errUpdatePassword) {
+            // GANTI InternalServerErrorException MENJADI BadRequestException
+            throw new BadRequestException(errUpdatePassword.message);
           }
-          if(password){
-            const { error } = await supabase.auth.admin.updateUserById(id, {
-              password,
-            });
-            if(error){
-              throw new InternalServerErrorException(error, "gagal mengubah password")
-            }
-          }
-          if(nama || email || urlPasfoto || password){
-            const { error: errUpdateUser } = await supabase
+        }
+        // Update data profil ke tabel user_profiles
+        if (nama || urlPasfoto || password) {
+          console.log("ga masuk sini?");
+          const { error: errUpdateUser } = await supabase
             .from("user_profiles")
             .update({
-              ...(email && { email } ),
-              ...(nama && { nama } ),
+              ...(nama && { nama }),
               ...(urlPasfoto && { urlPasfoto }),
-              ...(password && {is_default_password: false})
+              ...(password && { is_default_password: false }) // Matikan flag password default
             })
             .eq("user_id", id);
 
-            if(errUpdateUser){
-              throw new InternalServerErrorException("Gagal mengubah data");
-            }
+          if (errUpdateUser) {
+            throw new InternalServerErrorException("Gagal mengubah data profil di database");
           }
+        }
 
-        return {success: true, message: "Berhasil Diperbarui", code: 200}
-      }catch(err: any){
-        return {success: false, message: err.response.message || "Kegagalan Sistem", code: err.status};
+        return { success: true, message: "Berhasil Diperbarui", code: 200 };
+      } catch (err: any) {
+        console.error("DETAIL ERROR 400:", JSON.stringify(err, null, 2)); 
+        throw err;
       }
     }
     async changeRole(id:string, changeTo: string){
@@ -320,4 +328,5 @@ export class UserService {
         return {success: false, message: err.response.message || "Kegagalan Sistem", code: err.status};
       }
   }
+  
 }

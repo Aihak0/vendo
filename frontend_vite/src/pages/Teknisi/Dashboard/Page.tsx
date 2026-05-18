@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { getManagedMesin, getManagedMesinLogs } from "../../../services/api";
+import { getManagedMesin, getManagedMesinLogs, getMyTask } from "../../../services/api";
 import { useAuth } from "../../../context/AuthContext";
-import { act, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Info, ToolCase } from "lucide-react";
 import { LogRow, filterLogStyles, filterLogTypes } from '../../../components/ui/log/Log';
 import { FilterDropdown } from "../../../components/ui/dropdown/Dropdown";
@@ -14,6 +14,16 @@ import "dayjs/locale/id";
 import type { Mesin, SlotData, SlotRow } from "../../Dashboard/Mesin/Interface";
 import { MesinMaintenanceModal } from "./Maintenance";
 
+const filterPrioritasStyles = {
+  low: { label: "Low", dot: "bg-lime-500" },
+  medium: { label: "Medium", dot: "bg-yellow-500"},
+  high: { label: "High", dot: "bg-orange-600"},
+  urgent: { label: "Urgent", dot: "bg-red-500"},
+  all: { label: "Semua Prioritas", dot: ""}
+}
+const filterPrioritasTypes = ["all", "low", "medium", "high", "urgent"];
+
+
 export default function PageDashboardTeknisi(){
     dayjs.extend(utc);
     dayjs.extend(timezone);
@@ -21,7 +31,7 @@ export default function PageDashboardTeknisi(){
 
     dayjs.locale('id');
     
-    const { profile, loading: loadingUser, user } = useAuth();
+    const { profile } = useAuth();
 
     const { data, isLoading, error } = useQuery({
         // Gunakan profile?.user_id langsung di queryKey
@@ -35,6 +45,7 @@ export default function PageDashboardTeknisi(){
     });
 
     const [activeLogFilter, setActiveLogFilter] = useState("all");
+    const [ prioritas, setPrioritas] = useState("all");    
     const { data: dataLogs, isLoading: loadingLogs, error: errorLogs } = useQuery({
         // Gunakan profile?.user_id langsung di queryKey
         queryKey: ['ManagedMesinLogs', profile?.user_id, activeLogFilter],
@@ -45,9 +56,19 @@ export default function PageDashboardTeknisi(){
         // KUNCINYA DI SINI: Query tidak akan jalan selama user_id belum ada
         enabled: !!profile?.user_id, 
     });
+    const { data: dataTask, isLoading: loadingTasks, error: errorTasks } = useQuery({
+        // Gunakan profile?.user_id langsung di queryKey
+        queryKey: ['MyTask', profile?.user_id, prioritas],
+        
+        // Fungsi hanya akan dijalankan jika profile?.user_id ada
+        queryFn: () => getMyTask(profile.user_id, prioritas),
+        
+        // KUNCINYA DI SINI: Query tidak akan jalan selama user_id belum ada
+        enabled: !!profile?.user_id, 
+    });
     const [ isMesinInfoModalOpen, setIsMesinInfoModalOpen] = useState(false);    
     const [dataInfo, setDataInfo] = useState<Mesin | null>(null);
-    const [ isMesinMaintenanceModalOpen, setIsMesinMaintenanceModalOpen] = useState(false);    
+    const [ isMesinMaintenanceModalOpen, setIsMesinMaintenanceModalOpen] = useState(false);
     const [dataMesinMaintenance, setdataMesinMaintenance] = useState<Mesin | null>(null);
     const getStructuredSlot = (slots: SlotData[] = []) => {
         // 1. Grouping menggunakan reduce
@@ -93,10 +114,13 @@ export default function PageDashboardTeknisi(){
     },[data])
     return ( 
         <div className="">
-            <div className="grid grid-cols-3 gap-6 ">
-                <div className="col-span-2 grid grid-cols-3 gap-6">
-                       
-                    
+            <div className="grid grid-cols-4 gap-6 ">
+                <div className="col-span-2 grid grid-cols-2 gap-6">
+                    { data?.length === 0 && !isLoading && (
+                        <div className="text-center py-12 text-gray-400 dark:text-gray-400 text-sm">
+                            Data tidak ditemukan
+                        </div>
+                    )}
                     {isLoading ? (
                         <>
                             <div className="bg-white dark:bg-slate-800 rounded-lg h-40 p-5 text-gray-300 flex flex-col gap-4">
@@ -131,7 +155,7 @@ export default function PageDashboardTeknisi(){
                                     </span>
                                 </div>
                                 <p className="text-gray-500 text-sm mb-3">{lokasiLengkap}</p>
-                                <div className="h-[200px] overflow-y-auto mb-4">
+                                <div className="h-[200px] overflow-y-auto mb-4 no-scrollbar">
                                     
                                     {slot.map((s) => (
                                         <div key={s.row_number} className="flex justify-between ">
@@ -239,7 +263,7 @@ export default function PageDashboardTeknisi(){
                         <h2 className="font-bold">Log Mesin</h2>
                           <FilterDropdown activeFilter={activeLogFilter} onChange={setActiveLogFilter}  style={filterLogStyles} filter={filterLogTypes}/>
                     </div>
-                    <div className="h-[500px] overflow-y-auto">
+                    <div className="h-[500px] overflow-y-auto no-scrollbar">
                         { loadingLogs ? (
                             <>
                                 <div className="animate-pulse p-3">
@@ -259,12 +283,91 @@ export default function PageDashboardTeknisi(){
                                 </div>
                             </>
                         ) : (
-                            dataLogs.map((lg: any) => (
+                            dataLogs.slice(0, 10).map((lg: any) => (
         
                                     <LogRow key={lg.id} log={lg} />
                             ))
                         )}
+                        { dataLogs?.length === 0 && !loadingLogs && (
+                            <div className="text-center py-12 text-gray-400 dark:text-gray-400 text-sm">
+                                Data tidak ditemukan
+                            </div>
+                        )}
                           {errorLogs && (
+                
+                            <div className="text-center py-12 text-red-400 dark:text-red-800 text-sm">
+                                Gagal Memuat Data: {(error as any).message}
+                            </div>
+                        )}
+                    </div>
+                 
+                        
+       
+                </div>
+                <div className="relative bg-white dark:bg-slate-950 rounded-xl text-slate-700 dark:text-gray-300 border-2 border-blue-100 dark:border-blue-900">
+                    <div className="w-full p-4 bg-blue-50/50 dark:bg-slate-800 rounded-t-xl flex justify-between">
+                        <h2 className="font-bold">Tugas</h2>
+                          <FilterDropdown activeFilter={prioritas} onChange={setPrioritas}  style={filterPrioritasStyles} filter={filterPrioritasTypes}/>
+                    </div>
+                    <div className="h-[500px] overflow-y-auto no-scrollbar">
+                        { loadingTasks ? (
+                            <>
+                                <div className="animate-pulse p-3">
+                                    <div className='bg-slate-100 dark:bg-slate-700 p-2 rounded-full'>
+
+                                    </div>
+                                </div>
+                                <div className="animate-pulse p-3 w-3/4">
+                                    <div className='bg-slate-100 dark:bg-slate-700 p-2 rounded-full'>
+
+                                    </div>
+                                </div>
+                                <div className="animate-pulse p-3 w-1/2">
+                                    <div className='bg-slate-100 dark:bg-slate-700 p-2 rounded-full'>
+
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            dataTask?.data?.map((tsk: any) => 
+                                {
+                                const style = filterPrioritasStyles[tsk.prioritas as keyof typeof filterPrioritasStyles] || { label: "Unknown", dot: "bg-gray-400" };    
+
+                                if(tsk.status === 'cancelled'){
+                                    return null;
+                                }
+                                return(
+                                
+                                <div key={tsk.id} className={`border-b last:border-0 border-gray-300 dark:border-slate-700 p-3 ${tsk.status === 'done' && 'opacity-50 line-through'}`}>
+                                    <div className='flex items-start gap-3'>
+                                        <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${style?.dot}`} />
+                                            <span className="text-xs text-gray-400 font-mono pt-0.5 min-w-[68px] shrink-0">
+                                              Tenggat : {dayjs(tsk.tenggat_waktu).format('dddd, DD MMMM YYYY HH:mm')}
+                                            </span>
+                                            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${tsk.status === 'assigned' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' : tsk.status === 'in_progress' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' : tsk.status === 'done' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' } `}>
+                                                {tsk.status}
+                                            </span>
+                                    
+                                        </div>
+                                        <div className='flex gap-2 items-center mb-1 mx-5'>
+                                         
+                                                <span className="text-[12px] font-bold text-gray-400 dark:text-gray-400 font-mono truncate">{tsk.mesin.nama}</span>
+                                       
+                                     
+                                           
+                                            
+                                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{tsk.judul}</p>
+                                
+                                        </div>
+                                </div>
+                            )})
+                        )}
+                           { dataTask?.data?.length === 0 && !loadingTasks && (
+                                <div className="text-center py-12 text-gray-400 dark:text-gray-400 text-sm">
+                                    Data tidak ditemukan
+                                </div>
+                            )}
+                          {errorTasks && (
                 
                             <div className="text-center py-12 text-red-400 dark:text-red-800 text-sm">
                                 Gagal Memuat Data: {(error as any).message}

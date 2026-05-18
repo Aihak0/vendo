@@ -299,7 +299,8 @@ export default function MesinPage() {
                           <div className="flex items-center gap-2">
 
                             {row.mesin_teknisi.length > 0 ? (
-                              row.mesin_teknisi.slice(0, 2).map((item :any) => 
+                              <>
+                              {row.mesin_teknisi.slice(0, 2).map((item :any) => 
                                 item.urlPasfoto ? (
                                   <div key={item.user_id} className="flex items-center gap-1">
                                     <img src={item.urlPasfoto} className='w-9 h-9 rounded-full' alt="" />
@@ -313,10 +314,11 @@ export default function MesinPage() {
                                     <span className="text-sm font-medium text-slate-800 dark:text-gray-300">{item.nama}</span>
                                   </div>
                                 )
-                              ),
-                              row.mesin_teknisi.length > 2 && (
+                              )}
+                              {row.mesin_teknisi.length > 2 && (
                                 <span> dan {row.mesin_teknisi.length - 2} teknisi lainnya</span>
-                              )
+                              )}
+                              </>
                             ) :  <p className='text-sm text-slate-600 dark:text-gray-400'>Tidak ada teknisi</p>
                             }
                           </div>

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { APIProvider, Map, AdvancedMarker, useMap, useAdvancedMarkerRef, InfoWindow, ColorScheme } from '@vis.gl/react-google-maps';
+import { useEffect, useState } from 'react';
+import { APIProvider, Map, AdvancedMarker, useMap, useAdvancedMarkerRef, InfoWindow } from '@vis.gl/react-google-maps';
 import { useTheme } from '../context/ThemeContext';
 interface MapLocasiProps {
     locations: Coords[];

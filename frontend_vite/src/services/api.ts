@@ -61,6 +61,12 @@ export const getUser = async (page?: number, limit?: number, sortAsc?: boolean |
   return data;
 };
 
+export const getUserProfile = async () => {
+  // Mengirim query params ?search=... ke backend
+  const { data } = await api.get('/user/profile');
+  return data;
+};
+
 export const getTransaksi = async (page: number, limit: number, sortAsc: boolean | null, sortKey: string | null, search: string | null, statusTransaksi: string | null, statusPembayaran: string | null) => {
   // Mengirim query params ?search=... ke backend
   const { data } = await api.get('/transaksi', {
@@ -90,6 +96,14 @@ export const getTask = async (page: number, limit: number, sortAsc: boolean | nu
   // Mengirim query params ?search=... ke backend
   const { data } = await api.get('/task', {
     params: { page, limit, sortAsc, sortKey, search, status, prioritas }
+  });
+  return data;
+};
+
+export const getMyTask = async (teknisi_id: string, prioritas?: string | null) => {
+  // Mengirim query params ?search=... ke backend
+  const { data } = await api.get('/task/my-task', {
+    params: { teknisi_id, prioritas }
   });
   return data;
 };
@@ -172,6 +186,15 @@ export const changeRole = async (id: string, changeTo: string) => {
   return data;
 };
 
+export const changeStatusTask = async ({ id, status, reason }: { id: string, status: string, reason: string }) => {
+  const { data } = await api.patch(`/task/update_status/${id}`, { status, reason }, {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  return data;
+};
+
 export const updateProduct = async (id: string, formData: FormData) => {
   const { data } = await api.patch(`/produk/edit/${id}`, formData, {
     headers: {
@@ -185,6 +208,18 @@ export const updateUser = async (id: string, formData: FormData) => {
   const { data } = await api.patch(`/user/update/${id}`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
+    },
+  });
+  return data;
+};
+
+export const updateUserByOwn = async (id: string, formData: FormData) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  const { data } = await api.patch(`/user/change_profile_by_owner/${id}`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+      'Authorization': `Bearer ${token}`
     },
   });
   return data;
