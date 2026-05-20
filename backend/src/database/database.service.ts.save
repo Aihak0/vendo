@@ -1,0 +1,73 @@
+import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Pool, PoolClient } from 'pg';
+
+@Injectable()
+export class DatabaseService implements OnModuleInit, OnModuleDestroy {
+  private pool: Pool;
+  private readonly logger = new Logger(DatabaseService.name);
+
+  constructor(private configService: ConfigService) {
+    // Mengambil variabel environment baru untuk PostgreSQL VM 2
+    const host = this.configService.get<string>('DB_HOST');
+    const port = this.configService.get<number>('DB_PORT') || 5432;
+    const user = this.configService.get<string>('DB_USERNAME');
+    const password = this.configService.get<string>('DB_PASSWORD');
+    const database = this.configService.get<string>('DB_DATABASE');
+
+    if (!host || !user || !password || !database) {
+      throw new Error('PostgreSQL environment variables not defined');
+    }
+
+    // Inisialisasi Connection Pool ke PostgreSQL VM 2
+    this.pool = new Pool({
+      host,
+      port,
+      user,
+      password,
+      database,
+      max: 20, // Jumlah maksimum koneksi simultan dalam pool
+      idleTimeoutMillis: 30000, // Menutup koneksi yang idle setelah 30 detik
+      connectionTimeoutMillis: 5000, // Timeout jika gagal konek ke VM 2 dalam 5 detik
+    });
+  }
+
+  async onModuleInit() {
+    try {
+      // Tes koneksi ke database di VM 2 saat modul dinyalakan
+      const client = await this.pool.connect();
+      this.logger.log('Successfully connected to PostgreSQL database on VM 2');
+      client.release(); // Kembalikan koneksi ke pool
+    } catch (error) {
+      this.logger.error(`Failed to connect to PostgreSQL database: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async onModuleDestroy() {
+    // Menutup semua koneksi pool dengan aman saat aplikasi NestJS mati
+    await this.pool.end();
+    this.logger.log('PostgreSQL connection pool closed');
+  }
+
+  /**
+   * Helper method untuk menjalankan query SQL secara langsung
+   */
+  async query<T = any>(text: string, params?: any[]): Promise<T[]> {
+    try {
+      const res = await this.pool.query(text, params);
+      return res.rows;
+    } catch (error) {
+      this.logger.error(`Database Query Error: ${error.message} | Query: ${text}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Helper method jika Anda butuh transaction (BEGIN, COMMIT, ROLLBACK)
+   */
+  async getClient(): Promise<PoolClient> {
+    return await this.pool.connect();
+  }
+}

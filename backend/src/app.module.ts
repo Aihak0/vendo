@@ -22,6 +22,7 @@ import { MqttModule } from './mqtt/mqtt.module';
 import { TransaksiService } from './transaksi/transaksi.service';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { TaskModule } from './task/task.module';
+import { DatabaseModule } from './database/database.module';
 
 @Module({
   imports: [ClientsModule.register([
@@ -29,17 +30,16 @@ import { TaskModule } from './task/task.module';
         name: 'MQTT_CLIENT',
         transport: Transport.MQTT,
         options: {
-          url: 'mqtts://bc39c402663344478d41da67942456d4.s1.eu.hivemq.cloud:8883',
-          username: 'okelah',
-          password: 'Okelah12',
-          protocol: 'mqtts',
+          url: 'mqtt://10.10.8.170:1883',
+          username: 'mqttuser',
+          password: '123',
           rejectUnauthorized: false,
         },
       },
     ]),
     SupabaseModule, AuthModule, ConfigModule.forRoot({
       isGlobal: true,
-    }), ProdukModule, MesinModule, PesanModule, UserModule, MidtransModule, TransaksiModule, PergerakanStockModule, MqttModule, DashboardModule, TaskModule,
+    }), ProdukModule, MesinModule, PesanModule, UserModule, MidtransModule, TransaksiModule, PergerakanStockModule, MqttModule, DashboardModule, TaskModule, DatabaseModule,
   ],  
   controllers: [AppController, AuthController, ProdukController, TransaksiController],
   providers: [AppService, ProdukService, TransaksiService],
