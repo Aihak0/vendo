@@ -31,9 +31,10 @@ import { JwtModule } from '@nestjs/jwt';
         name: 'MQTT_CLIENT',
         transport: Transport.MQTT,
         options: {
-          url: 'mqtt://10.10.8.170:1883',
-          username: 'mqttuser',
-          password: '123',
+          url: 'mqtts://bc39c402663344478d41da67942456d4.s1.eu.hivemq.cloud:8883',
+          username: 'okelah',
+          password: 'Okelah12',
+          protocol: 'mqtts',
           rejectUnauthorized: false,
         },
       },
