@@ -3,13 +3,14 @@ import { ClientProxy } from '@nestjs/microservices/client/client-proxy';
 import { Observable } from 'rxjs';
 import { SupabaseService } from 'src/supabase/supabase.service';
 import { MqttContext } from '@nestjs/microservices';
+import { DatabaseService } from 'src/database/database.service';
 
 @Injectable()
 export class MqttAuthGuard implements CanActivate {
-  constructor(private supabaseService: SupabaseService, @Inject('HIVE_CLIENT') private client: ClientProxy,) {}
+  constructor(private databaseService: DatabaseService, @Inject('HIVE_CLIENT') private client: ClientProxy,) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const supabase = this.supabaseService.getClient();
+    const db = this.databaseService.getClient();
     const rpc = context.switchToRpc();
     const payload = rpc.getData(); // Mengambil payload dari MQTT
     const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
@@ -29,32 +30,32 @@ export class MqttAuthGuard implements CanActivate {
         });
       return false; 
     }
+    
+  try {
+    const queryParams: any[] = [kode];
+    let query = `SELECT id, kode, status, teknisi_id FROM mesin WHERE kode = $1`;
 
-    // 2. Cek ke Database Supabase
-
-    let query = supabase
-      .from('mesin')
-      .select('id, kode, nama, status, teknisi_id')
-      .eq('kode', kode)
-
-    if (topic != "mesin/status") {
-      query = query.eq('status', 'online');
+    if (topic !== "mesin/status") {
+      query += ` AND status = 'online'`;
     }
 
-    const { data: mesin, error } = await query.single();
-    console.log("mesin auth =>", mesin);
-    console.log("mesin error auth emesin =>", error);
-    if (error || !mesin) {
-       this.client.emit(`transaksi/status`, {
-            success: false,
-            message: `Akses ditolak untuk mesin: ${kode}` ,
-        });
-      return false; 
-    }
-
+    // Eksekusi query dengan parameter yang aman
+    const mesin = await db.query(query, queryParams);
+    
     const client = context.switchToRpc().getContext();
-    client.mesin = mesin; 
+    client.mesin = mesin.rows; 
 
     return true;
+
+  } catch (error: any) {
+     this.client.emit(`transaksi/status`, {
+          success: false,
+          message: `Akses ditolak untuk mesin: ${kode}` ,
+      });
+    return false; 
+
+  }
+
+    
   }
 }
