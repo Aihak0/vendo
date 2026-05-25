@@ -3,8 +3,8 @@ import axios from 'axios';
 import { createClient } from '@supabase/supabase-js';
 import type { DateType } from 'react-tailwindcss-datepicker';
 
-// const api = axios.create({ baseURL: 'https://vendo-api-0i0p.onrender.com' });
-const api = axios.create({ baseURL: 'http://localhost:3000' });
+const api = axios.create({ baseURL: 'https://vendo-api-0i0p.onrender.com' });
+// const api = axios.create({ baseURL: 'http://localhost:3000' });
 
 const supabase = createClient('https://gqqghwfjsokyqjxztxwk.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxcWdod2Zqc29reXFqeHp0eHdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzMzEzNzgsImV4cCI6MjA4NzkwNzM3OH0.tCPMutwRd3vRDxE5q6pSj38MEXbQnkLYO0QiHzGk9J4');
 
