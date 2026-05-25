@@ -1,86 +1,89 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { SupabaseService } from 'src/supabase/supabase.service';
 import { Request } from 'express';
+import { DatabaseService } from 'src/database/database.service';
 
 @Injectable()
 export class UserService {
-    constructor(private supabaseService: SupabaseService){}
+    constructor(private databaseService: DatabaseService) {}
 
-    async findAll(page?: number, limit?: number, sortAsc?: boolean, sortKey?: string, search?: string, role?: string ) {
-      const supabase = this.supabaseService.getClient();
-      try{
+    async findAll(page?: number, limit?: number, sortAsc?: boolean, sortKey?: string, search?: string, role?: string) {
+      const db = this.databaseService.getClient();
+      try {
+        const pageNum = page || 1;
+        const limitNum = limit || 10;
+        const { offset } = this.databaseService.getPaginationOffset(pageNum, limitNum);
+        const orderDir = sortAsc ? 'ASC' : 'DESC';  
+        const sortColumn = sortKey || 'created_at';
 
-        let query = supabase
-          .from('user_profiles')
-          .select(`*`)
+        let whereConditions: string[] = [];
+        let queryParams: any[] = [];
+        let paramIndex = 1;
 
-          
-        if(page && limit){ 
-            const from = (page - 1) * limit;
-            const to = from + limit - 1;
-            query = query.range(from, to)
+        if (role && role !== 'all') {
+          whereConditions.push(`role = $${paramIndex}`);
+          queryParams.push(role);
+          paramIndex++;
         }
-        if(role && role != "all"){
-          query = query.eq("role", role);
-        }
-        if (sortKey){
-            query = query.order(sortKey, { ascending: sortAsc });
-        }else{
-            query = query.order('created_at', { ascending: false });
-          }
+
         if (search) {
-          query = query.ilike('nama', `%${search}%`);
+          whereConditions.push(`nama ILIKE $${paramIndex}`);
+          queryParams.push(`%${search}%`);
+          paramIndex++;
         }
-        
-        const { data, error } = await query;
-        
-        const { data: stats, error:errorStats, count } = await supabase
-          .from('user_profiles')
-          .select(`
-            role
-          `, { count: 'exact' });
-  
-          let countAdmin;
-          let countTeknisi
-        if(!errorStats){
-          countAdmin = stats.filter(u => u.role === 'admin').length;
-          countTeknisi = stats.filter(u => u.role === 'teknisi').length;
-        }else{
-          countAdmin = 0;
-          countTeknisi = 0;
-        }
-        if (error) {
-          throw new InternalServerErrorException(error.message);
-        }
-        
+
+        const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+        const mainQuery = `
+          SELECT * FROM user_profiles 
+          ${whereClause}
+          ORDER BY ${sortColumn} ${orderDir}
+          LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+        `;
+        queryParams.push(limitNum, offset);
+
+        const result = await db.query(mainQuery, queryParams);
+        const data = result.rows;
+
+        const countQuery = `SELECT COUNT(*) as total FROM user_profiles ${whereClause}`;
+        const countResult = await db.query(countQuery, whereConditions.length > 0 ? queryParams.slice(0, -2) : []);
+        const count = parseInt(countResult.rows[0].total, 10);
+
+        const statsQuery = `SELECT role, COUNT(*) as count FROM user_profiles GROUP BY role`;
+        const statsResult = await db.query(statsQuery);
+        const countAdmin = statsResult.rows.find(r => r.role === 'admin')?.count || 0;
+        const countTeknisi = statsResult.rows.find(r => r.role === 'teknisi')?.count || 0;
+
         return {
           success: true,
           data,
           metadata: {
             totalData: count,
-            totalDataAdmin: countAdmin,
-            totalDataTeknisi: countTeknisi,
-            currentPage: Number(page),
-            totalPages: Math.ceil((count ?? 0) / (limit || 0)),
-            pageSize: limit,
+            totalDataAdmin: parseInt(countAdmin, 10),
+            totalDataTeknisi: parseInt(countTeknisi, 10),
+            currentPage: pageNum,
+            totalPages: Math.ceil(count / limitNum),
+            pageSize: limitNum,
           }
         };
-      }catch(err: any){
-        return {success: false, message: err.response.message || "Kegagalan Sistem", code: err.status};
+      } catch (err: any) {
+        throw new InternalServerErrorException(err.message || 'Gagal mengambil data users');
       }
     }
-    async getUserProfiles(id: string){
-      const supabase = this.supabaseService.getClient();
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('user_id', id)
-        .single();
+    async getUserProfiles(id: string) {
+      const db = this.databaseService.getClient();
+      try {
+        const query = `SELECT * FROM user_profiles WHERE user_id = $1`;
+        const result = await db.query(query, [id]);
 
-      if(error){
-        throw new InternalServerErrorException(error.message || "Gagal mengambil data profile");
+        if (result.rows.length === 0) {
+          throw new InternalServerErrorException('User profile tidak ditemukan');
+        }
+
+        return result.rows[0];
+      } catch (err: any) {
+        throw new InternalServerErrorException(err.message || 'Gagal mengambil data profile');
       }
-      return data;
     }
     // user.service.ts 
     async registerUser(userData: any, pasFoto: Express.Multer.File) {

@@ -1,22 +1,23 @@
-import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
-import dayjs from 'node_modules/dayjs';
-import { SupabaseService } from 'src/supabase/supabase.service';
+import { Injectable } from '@nestjs/common';
+import dayjs from 'dayjs'; // Berubah: bersihkan path import
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import { DatabaseService } from 'src/database/database.service';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
 @Injectable()
 export class DashboardService {
-    constructor(private supabaseService: SupabaseService){}
+    constructor(private databaseService: DatabaseService){}
 
     async getDataDashboard(filter: string, dari?: Date, sampai?: Date){
-        const supabase = this.supabaseService.getClient()
+        const db = this.databaseService.getClient(); // Asumsi: mengembalikan objek Pool dari 'pg'
         
-        const now = dayjs().tz("Asia/Jakarta");
-    
+        // Catatan: Jika ingin menggunakan zona Jakarta secara konsisten, 
+        // pastikan set up timezone di objek dayjs di bawah ini jika diperlukan.
         let startDate, endDate;
+        
         if(filter === "custom"){
             startDate = dayjs.tz(dari, "Asia/Jakarta").startOf('day').format();
             endDate = dayjs.tz(sampai, "Asia/Jakarta").add(1, "day").startOf('day').format();
@@ -37,39 +38,58 @@ export class DashboardService {
             endDate = dayjs().add(1, "year").startOf('year').format();
             startDate = dayjs().subtract(4, 'year').startOf('year').format();
         }
-        const { data: dataTransaksiSummary, error: errTransaksiSummary } = await supabase.rpc('get_transaksi_summary', {
-            p_end: endDate,
-            p_priode: filter === "custom" ? "hari" : filter,
-            p_start: startDate,
-        })
-    
-    
-        if (errTransaksiSummary || (dataTransaksiSummary && dataTransaksiSummary.success === false)) {
-            throw new InternalServerErrorException(errTransaksiSummary?.message || errTransaksiSummary?.message || "Gagal mengambil data summary");
-        }
 
-        const { data: dataLog, error: errLog} = await supabase
-          .from('log_mesin')
-          .select(`*, mesin!inner(*)`, { count: 'exact' })
-          .range(0, 5)
-          .order('created_at', { ascending: false }); 
+        const p_end = endDate;
+        const p_priode = filter === "custom" ? "hari" : filter;
+        const p_start = startDate;
 
-        if(errLog){
-            throw new InternalServerErrorException(errLog.message || "Gagal Mengambil datalog");
-        }
-
-        const { data: dataMesin, error: errMesin } = await supabase
-        .from('mesin')
-        .select("id, nama, status, latitude, longitude, user_profiles(nama, email, urlPasfoto)");
+        // 1. Query Transaksi Summary (Memanggil Stored Function)
+        const queryGetTransaksiSummary = `
+            SELECT * FROM get_transaksi_summary(
+                p_end => $1,
+                p_priode => $2,
+                p_start => $3
+            );
+        `;
         
-        if(errMesin){
-            throw new InternalServerErrorException(errMesin.message || "Gagal Mengambil datalog");
-        }
+        // 2. Query Logs (Mengganti sintaks Supabase menjadi INNER JOIN dan LIMIT)
+        // Sesuaikan nama kolom join (misal: log_mesin.mesin_id = mesin.id)
+        const queryGetLogs = `
+            SELECT log_mesin.*, mesin.nama as nama_mesin, mesin.status as status_mesin 
+            FROM log_mesin 
+            INNER JOIN mesin ON log_mesin.mesin_id = mesin.id
+            ORDER BY log_mesin.created_at DESC 
+            LIMIT 5;
+        `;
         
-        return{
-            data_summary: dataTransaksiSummary,
-            data_log: dataLog,
-            data_mesin: dataMesin
-        }
+        // 3. Query Mesin (Memperbaiki typo user_profiles)
+        const queryGetMesin = `
+            SELECT 
+                mesin.id, 
+                mesin.nama, 
+                mesin.status, 
+                mesin.latitude, 
+                mesin.longitude, 
+                user_profiles.nama AS nama_teknisi, 
+                user_profiles.email, 
+                user_profiles.urlPasfoto 
+            FROM mesin 
+            INNER JOIN mesin_teknisi ON mesin.id = mesin_teknisi.mesin_id 
+            INNER JOIN user_profiles ON mesin_teknisi.teknisi_id = user_profiles.user_id;
+        `;
+        
+        // Eksekusi semua query ke Postgres lokal
+        // Menggunakan Promise.all agar berjalan paralel dan lebih cepat
+        const [resSummary, resLogs, resMesin] = await Promise.all([
+            db.query(queryGetTransaksiSummary, [p_end, p_priode, p_start]),
+            db.query(queryGetLogs),
+            db.query(queryGetMesin)
+        ]);
+    
+        return {
+            data_summary: resSummary.rows,
+            data_log: resLogs.rows,
+            data_mesin: resMesin.rows
+        };
     }
 }
