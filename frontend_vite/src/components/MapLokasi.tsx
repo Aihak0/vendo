@@ -17,6 +17,9 @@ interface Coords {
 export const MapContainer = ({ locations }: MapLocasiProps) => {
   const { theme } = useTheme() 
   const [isLoadingMap, setIsLoadingMap] = useState(true);
+  if (!locations || locations?.length === 0) {
+      return <div>Memuat pin lokasi mesin...</div>;
+  }
   return (
     <APIProvider apiKey={import.meta.env.VITE_GOOGLE_MAP_API_KEY}>
       <div style={{ width: "100%" }}>

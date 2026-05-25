@@ -14,8 +14,6 @@ export default function SignInForm() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log("dijalankan embuh opo => ", user)
-    console.log("dijalankan embuh profile => ", profile)
     if (user && profile) {
       if (profile.role === 'admin') {
         navigate('/dashboard', { replace: true });
@@ -31,13 +29,12 @@ export default function SignInForm() {
     setError("");
 
     try {
-      const { error } = await login(email, password);
+      await login(email, password);
+    }catch (err: any) {
+      const namaPesanError = err.response?.data?.message || err.message || 'Terjadi kesalahan koneksi.';
 
-      if (error) {
-        setError(error.message);
-      }
-    }catch (err) {
-      setError('Terjadi kesalahan koneksi.');
+      // Set ke state error kamu
+      setError(namaPesanError);
     } finally {
       setLoading(false);
     }
@@ -120,7 +117,7 @@ export default function SignInForm() {
               </div> */}
               <form onSubmit={handleLogin} >
                 {error && (
-                  <div className="mb-4 p-2 bg-red-100 text-red-600 text-sm rounded">
+                  <div className="mb-4 p-2 bg-red-100 dark:bg-red-950 text-red-600 text-sm rounded">
                     {error}
                   </div>
                 )}

@@ -377,7 +377,7 @@ export default function Home() {
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-gray-500 dark:text-gray-400">
                       
-                      {(logMesin.data ?? []).length === 0 ? "0 entries" : `${logMesin.metadata.awalEntri}–${logMesin.metadata.akhirEntri} dari ${logMesin.metadata.totalData}`}
+                      {(logMesin.data ?? []).length === 0 ? "0 entries" : `${logMesin.metadata.awalEntri}–${logMesin.metadata.akhirEntri} dari ${logMesin?.metadata?.totalData}`}
                  
                   </span>
                  
@@ -395,7 +395,7 @@ export default function Home() {
                             {n}
                         </option>
                         ))}
-                        <option key={logMesin.metadata.totalData || 0} value={logMesin.metadata.totalData || 0}>
+                        <option key={logMesin?.metadata?.totalData || 0} value={logMesin?.metadata?.totalData || 0}>
                             Semua
                         </option>
                       </select>
@@ -403,7 +403,7 @@ export default function Home() {
 
                 </div>
                         
-                <Pagination page={page} totalPages={logMesin.metadata.totalPages || 0} onPageChange={setPage} />
+                <Pagination page={page} totalPages={logMesin?.metadata?.totalPages || 0} onPageChange={setPage} />
                 
               </div>
               )}

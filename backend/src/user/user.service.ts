@@ -77,7 +77,7 @@ export class UserService {
     async getUserProfiles(id: string) {
       const db = this.databaseService.getClient();
       try {
-        const query = `SELECT * FROM user_profiles WHERE user_id = $1`;
+        const query = `SELECT * FROM users WHERE id = $1`;
         const result = await db.query(query, [id]);
 
         if (result.rows.length === 0) {
@@ -86,6 +86,7 @@ export class UserService {
 
         return result.rows[0];
       } catch (err: any) {
+        console.log(err);
         throw new InternalServerErrorException(err.message || 'Gagal mengambil data profile');
       }
     }

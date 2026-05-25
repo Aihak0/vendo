@@ -1,15 +1,16 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Pool, QueryResult, QueryResultRow } from 'pg';
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   private pool: Pool;
+  private readonly logger = new Logger('DatabaseService');
 
   constructor(private configService: ConfigService) {
     // Inisialisasi pool koneksi menggunakan data dari .env Anda
     this.pool = new Pool({
-      host: this.configService.get<string>('DB_HOST') || '10.10.8.178',
+      host: this.configService.get<string>('DB_HOST') || '192.168.1.6',
       port: this.configService.get<number>('DB_PORT') || 5432,
       user: this.configService.get<string>('DB_USERNAME') || 'ok',
       password: this.configService.get<string>('DB_PASSWORD') || 'ok',
@@ -23,10 +24,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     try {
       const client = await this.pool.connect();
-      console.log('✅ Berhasil terhubung ke Database PostgreSQL VM 3');
+      this.logger.log('✅ Berhasil terhubung ke Database PostgreSQL VM 3');
       client.release(); // Kembalikan koneksi ke pool
     } catch (error: any) {
-      console.error('❌ Gagal terhubung ke Database VM 3:', error.message);
+     this.logger.log('❌ Gagal terhubung ke Database VM 3:', error.message);
     }
   }
 

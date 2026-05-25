@@ -85,7 +85,7 @@ export default function ProductPage() {
             { isLoading ? (
               <div className=' px-20 py-2 bg-white dark:bg-slate-800 mt-1 rounded-full'/>
             ) : (
-              <p className="text-slate-500 dark:text-gray-400 text-sm mt-1">{products.data.length} dari {products.metadata.totalData} Produk ditampilkan</p>  
+              <p className="text-slate-500 dark:text-gray-400 text-sm mt-1">{products?.data?.length} dari {products?.metadata?.totalData} Produk ditampilkan</p>  
             )}
 
         </div>

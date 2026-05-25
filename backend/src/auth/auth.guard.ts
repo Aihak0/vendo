@@ -20,6 +20,8 @@ export class AuthGuard implements CanActivate {
     if (!authHeader) throw new UnauthorizedException('Token tidak ditemukan');
     
     const token = authHeader.split(' ')[1];
+    console.log(authHeader)
+    console.log(token)
     if (!token) throw new UnauthorizedException('Format token salah');
 
     // Cek Cache internal (In-Memory)
@@ -45,12 +47,12 @@ export class AuthGuard implements CanActivate {
 
       // 3. Query ke tabel user lokal di VM 3
       const queryText = `
-        SELECT id, email, username, name, role 
+        SELECT id, email, username, role 
         FROM users 
         WHERE id = $1 
         LIMIT 1
       `;
-      
+      console.log("userid => ", userId)
       const result = await db.query(queryText, [userId]);
 
       // KOREKSI 3: Antisipasi jika token valid tapi user-nya sudah dihapus dari database
@@ -71,6 +73,8 @@ export class AuthGuard implements CanActivate {
       return true;
 
     } catch (e: any) {
+
+      console.log(e)
       // KOREKSI 2: Tangkap error JWT (seperti expired atau invalid secret) dan bungkus dengan UnauthorizedException
       throw new UnauthorizedException(e.message || 'Token tidak valid atau kedaluwarsa');
     }
