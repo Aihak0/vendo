@@ -29,9 +29,9 @@ import { TaskModule } from './task/task.module';
         name: 'MQTT_CLIENT',
         transport: Transport.MQTT,
         options: {
-          url: 'mqtts://bc39c402663344478d41da67942456d4.s1.eu.hivemq.cloud:8883',
-          username: 'okelah',
-          password: 'Okelah12',
+          url: 'mqtts://7c4648a14a1a4a1d889bf7e981418020.s1.eu.hivemq.cloud:8883',
+          username: 'VendingMachine',
+          password: 'Vmachine99#',
           protocol: 'mqtts',
           rejectUnauthorized: false,
         },

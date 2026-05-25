@@ -13,9 +13,9 @@ async function bootstrap() {
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.MQTT,
     options: {
-      url: 'mqtts://okelah:Okelah12@bc39c402663344478d41da67942456d4.s1.eu.hivemq.cloud:8883',
-      username: 'okelah',
-      password: 'Okelah12',
+      url: 'mqtts://VendingMachine:Vmachine99%23@7c4648a14a1a4a1d889bf7e981418020.s1.eu.hivemq.cloud:8883',
+      username: 'VendingMachine',
+      password: 'Vmachine99#',
       rejectUnauthorized: false,  // ← untuk debugging TLS dulu
     },
   });

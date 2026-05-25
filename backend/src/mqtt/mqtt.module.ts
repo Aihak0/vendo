@@ -8,7 +8,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
         name: 'HIVE_CLIENT',
         transport: Transport.MQTT,
         options: {
-          url: 'mqtts://okelah:Okelah12@bc39c402663344478d41da67942456d4.s1.eu.hivemq.cloud:8883',
+          url: 'mqtts://VendingMachine:Vmachine99%23@7c4648a14a1a4a1d889bf7e981418020.s1.eu.hivemq.cloud:8883',
           // Tambahkan ini untuk kestabilan koneksi HiveMQ Cloud
           connectTimeout: 10000,
           reconnectPeriod: 5000,
