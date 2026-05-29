@@ -14,6 +14,8 @@ export default function ProfilePage(){
     });
     const [openChangePassword, setOpenChangePassword] = useState(false);
     const [openChangeProfile, setOpenChangeProfile] = useState(false);
+    const minIoHost = import.meta.env.VITE_MINIO_HOST;
+    const minIoPort = import.meta.env.VITE_MINIO_PORT;
 
     return (
         <div className="p-4 text-gray-700 dark:text-gray-400">
@@ -32,7 +34,7 @@ export default function ProfilePage(){
             ): (
                 <>
                     <div className="flex items-center gap-6 mb-6">
-                        <img src={data.urlPasfoto} className="w-30 h-30 rounded-full" />
+                        <img src={`http://${minIoHost}:${minIoPort}/${data.urlPasfoto}`} className="w-30 h-30 rounded-full" />
                         <div>
                             <div className="flex items-center gap-2">
                                 <h1 className="text-3xl font-bold text-gray-300">{data.nama}</h1>

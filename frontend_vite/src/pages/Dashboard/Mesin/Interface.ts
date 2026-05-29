@@ -41,7 +41,7 @@ export interface Mesin {
     kodePos: string;
     row_slots: number;
     column_slots: number;
-    slot: SlotData[];
+    slots: SlotData[];
     teknisi_id: string;
     mesin_teknisi:any[];
 }

@@ -71,13 +71,13 @@ export function MesinSlot({isOpen, onClose, dataSlot}: MesinSlotModalProps){
     };
 
     useEffect(() => {
-        console.log("Slot nyaaaa", slot);
-        console.log("Slot sekete", selectedSlot);
-    }, [slot]);
+        console.log("dataSlot", dataSlot);
+    }, [dataSlot]);
 
     useEffect(() =>{
          if (dataSlot && isOpen) {
-            const slots = dataSlot.slot;
+            const slots = dataSlot.slots;
+        
             const groupedByRow = slots.reduce((acc:SlotRow[], curr) => {
               const rowNum = curr.metadata.row_number;
 

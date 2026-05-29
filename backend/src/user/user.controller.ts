@@ -12,8 +12,9 @@ export class UserController {
     constructor(private readonly userService: UserService){}
 
     @Get()
-    @UseGuards(AuthGuard, RolesGuard)
+    // @UseGuards(AuthGuard, RolesGuard)
     async findAll(@Query('page', new ParseIntPipe({ optional: true })) page: number, @Query('limit', new ParseIntPipe({ optional: true })) limit: number, @Query("sortAsc", new ParseBoolPipe({optional: true})) sortAsc: boolean, @Query("sortKey") sortKey: string, @Query('search') search: string, @Query("role") role: string){
+        console.log("juangkrek we i");
         return await this.userService.findAll(page, limit, sortAsc, sortKey, search, role);
     }
 

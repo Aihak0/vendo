@@ -39,6 +39,8 @@ export default function UserPage() {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
   const [selected, setSelected] = useState<any[]>([]);
+  const minIoHost = import.meta.env.VITE_MINIO_HOST;
+  const minIoPort = import.meta.env.VITE_MINIO_PORT;
   
   const columns = [
     { key: "nama", label: "Nama" },
@@ -272,7 +274,7 @@ export default function UserPage() {
                       
                       {row.urlPasfoto ? (
                         <div className="flex items-center gap-3">
-                          <img src={row.urlPasfoto} className='w-9 h-9 rounded-full' alt="" />
+                          <img src={`http://${minIoHost}:${minIoPort}/${row.urlPasfoto}`} className='w-9 h-9 rounded-full' alt="" />
                           <span className="text-sm font-medium text-slate-800 dark:text-gray-300">{row.nama}</span>
                         </div>
                       ) : 
@@ -294,7 +296,7 @@ export default function UserPage() {
                     <td className="px-4 py-3.5 text-sm text-slate-600 dark:text-gray-300">{row.last_signin === null ? ("Tidak Pernah login") : dayjs(row.last_signin).fromNow()}</td>
                     <td className="px-4 py-3.5 text-sm text-slate-600 dark:text-gray-400">{row.is_default_password ? ("Ya") : "Tidak"}</td>
                     <td className="px-4 py-3.5">
-                      { profile?.user_id !== row.user_id && (
+                      { profile?.id !== row.id && (
 
                         <div className="flex items-center gap-1">
                           <button onClick={() => {

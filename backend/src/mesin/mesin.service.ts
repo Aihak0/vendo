@@ -2,11 +2,11 @@ import { BadRequestException, Inject, Injectable, InternalServerErrorException, 
 import { ClientProxy } from '@nestjs/microservices/client/client-proxy';
 import { MqttRecordBuilder } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
-import { SupabaseService } from 'src/supabase/supabase.service';
+import { DatabaseService } from 'src/database/database.service';
 
 @Injectable()
 export class MesinService {
-    constructor(private supabaseService: SupabaseService,
+    constructor(private databaseService: DatabaseService,
        @Inject('HIVE_CLIENT') private client: ClientProxy,
     ){}
 
@@ -18,362 +18,685 @@ export class MesinService {
           .setQoS(qos)
           .build();
   
-        // Gunakan lastValueFrom agar NestJS benar-benar mengirim pesan sebelum fungsi selesai
         await lastValueFrom(this.client.emit(topic, record));
         console.log(`[MQTT] Terkirim ke ${topic} dengan QoS ${qos}`);
       } catch (error: any) {
         console.error(`[MQTT] Gagal kirim ke ${topic}:`, error.message);
       }
     }
+
     async findAll(page: number, limit: number, sortAsc: boolean, sortKey?: string, search?: string, status?: string) {
-        const supabase = this.supabaseService.getClient();
-        try{
-          let query = supabase
-          .from("mesin")
-          .select("*, slot(*), mesin_teknisi(...user_profiles(user_id, nama, email, urlPasfoto))")
-          if(page && limit){
-            const from = (page -  1) * limit;
-            const to = from + limit - 1;
-            query = query.range(from, to);
+        const db = this.databaseService.getClient();
+        try {
+          
+          const orderDir = sortAsc ? 'ASC' : 'DESC';
+          const sortColumn = sortKey || 'created_at';
+          
+          let whereConditions: string[] = [];
+          let queryParams: any[] = [];
+          let paramIndex = 1;
+          
+          const hasPagination =
+            limit !== undefined &&
+            limit !== null &&
+            !isNaN(Number(limit));
+
+          let paginationQuery = '';
+
+          if (hasPagination) {
+            const limitNum = Number(limit);
+            const pageNum = Number(page) || 1;
+            const offset = (pageNum - 1) * limitNum;
+
+            paginationQuery = `
+              LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+            `;
+
+            queryParams.push(limitNum, offset);
           }
-          if (status && status != "all") {
-            console.log("filter status => ", status);
-            query = query.eq("status", status);
+          if (status && status !== 'all') {
+            whereConditions.push(`m.status = $${paramIndex}`);
+            queryParams.push(status);
+            paramIndex++;
           }
-          if (sortKey){
-            query = query.order(sortKey, { ascending: sortAsc });
-          }else{
-            query = query.order('created_at', { ascending: false });
-          }
+          
           if (search) {
-            query = query.ilike('nama', `%${search}%`);
+            whereConditions.push(`m.nama ILIKE $${paramIndex}`);
+            queryParams.push(`%${search}%`);
+            paramIndex++;
           }
-      
-          const { data, error } = await query;
-      
-          if (error) {
-            throw new InternalServerErrorException(error.message);
-          }
-  
-          const { data: stats, error:errorStats, count } = await supabase
-          .from('mesin')
-          .select(`
-            status
-          `, {count: "exact"});
-  
-          let countOnline, countOffline, countMaintenance;
-          if(!errorStats){
-            countOnline = stats.filter(u => u.status === 'online').length;
-            countOffline = stats.filter(u => u.status === 'offline').length;
-            countMaintenance = stats.filter(u => u.status === 'maintenance').length;
-          }else{
-            countOnline = 0;
-            countOffline = 0;
-            countMaintenance = 0;
-          }
-  
+          
+          const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+          
+          const mainQuery = `
+            SELECT 
+              m.*,
+              COALESCE(
+                json_agg(
+                  DISTINCT jsonb_build_object(
+                    'id', s.id,
+                    'kode', s.kode,
+                    'produk_id', s.produk_id,
+                    'stock', s.stock,
+                    'metadata', s.metadata,
+                    'max_stock', s.max_stock
+                  )
+                ) FILTER (WHERE s.id IS NOT NULL),
+                '[]'
+              ) as slots,
+              COALESCE(
+                json_agg(
+                  DISTINCT jsonb_build_object(
+                    'teknisi_id', mt.teknisi_id,
+                    'nama', up.username,
+                    'email', up.email,
+                    'urlPasfoto', up."urlPasfoto"
+                  )
+                ) FILTER (WHERE mt.teknisi_id IS NOT NULL),
+                '[]'
+              ) as teknisi
+            FROM mesin m
+            LEFT JOIN slot s ON m.id = s.mesin_id
+            LEFT JOIN mesin_teknisi mt ON m.id = mt.mesin_id
+            LEFT JOIN users up ON mt.teknisi_id = up.id
+            ${whereClause}
+            GROUP BY m.id
+            ORDER BY m.${sortColumn} ${orderDir}
+            ${paginationQuery}
+          `;
+        
+          const result = await db.query(mainQuery, queryParams);
+          const data = result.rows;
+          
+          const countQuery = `SELECT COUNT(*) as total FROM mesin m ${whereClause}`;
+          const countResult = await db.query(countQuery, whereConditions.length > 0 ? queryParams.slice(0, -2) : []);
+          const count = parseInt(countResult.rows[0].total, 10);
+          
+          const statsQuery = `SELECT status, COUNT(*) as count FROM mesin GROUP BY status`;
+          const statsResult = await db.query(statsQuery);
+          const countOnline = statsResult.rows.find(r => r.status === 'online')?.count || 0;
+          const countOffline = statsResult.rows.find(r => r.status === 'offline')?.count || 0;
+          const countMaintenance = statsResult.rows.find(r => r.status === 'maintenance')?.count || 0;
+          
           return {
             success: true,
             code: 200,
             data,
             metadata: {
               totalData: count,
-              totalDataOnline: countOnline,
-              totalDataOffline: countOffline,
-              totalDataMaintenance: countMaintenance, 
+              totalDataOnline: parseInt(countOnline, 10),
+              totalDataOffline: parseInt(countOffline, 10),
+              totalDataMaintenance: parseInt(countMaintenance, 10),
               currentPage: page,
-              totalPages: Math.ceil((count ?? 0) / limit),
+              totalPages: Math.ceil(count / limit),
               pageSize: limit,
             }
           };
-        }catch(err: any){
-          return {success: false, message: err.response.message || "Kegagalan Sistem", code: err.status};
+        } catch (err: any) {
+          console.log("err;ror mesin", err);
+          throw new InternalServerErrorException(err.message || 'Gagal mengambil data mesin');
         }
-
     }
 
-    async findManagedMesin(teknisi_id: string){
-      const supabase = this.supabaseService.getClient();
-      if(!teknisi_id) throw new BadRequestException("Pengenal tidak valid");
+    async findManagedMesin(teknisi_id: string) {
+      const db = this.databaseService.getClient();
+      if (!teknisi_id) throw new BadRequestException('Pengenal tidak valid');
 
-      const { data: dataManagedMesin, error: errManagedMesin} = await supabase
-      .from("mesin_teknisi").select("...mesin(*, slot(*, produk(nama, img_url)))")
-      .eq("teknisi_id", teknisi_id);
-
-      if(errManagedMesin ){
-         console.error("Error fetching log_mesin for teknisi:", errManagedMesin);
-        throw new InternalServerErrorException(errManagedMesin?.message || "Data tidak ditemukan");
-      } 
-
-      return dataManagedMesin;
-    }
-    async findManagedMesinLog(teknisi_id: string, filter?: string){
-      const supabase = this.supabaseService.getClient();
-      if(!teknisi_id) throw new BadRequestException("Pengenal tidak valid");
-      let query = supabase
-        .from("log_mesin")
-        .select(`
-          *,
-          mesin!inner(*, mesin_teknisi!inner(*))
-        `)
-        .eq("mesin.mesin_teknisi.teknisi_id", teknisi_id)
-        .order("created_at", { ascending: false });
-      if(filter && filter != "all"){
-        query = query.eq("tipe", filter);
+      try {
+        const query = `
+          SELECT m.*, 
+            COALESCE(
+                json_agg(
+                  DISTINCT jsonb_build_object(
+                    'id', s.id,
+                    'kode', s.kode,
+                    'produk_id', s.produk_id,
+                    'stock', s.stock,
+                    'metadata', s.metadata,
+                    'max_stock', s.max_stock,
+                    
+                  
+                    'produk', CASE 
+                      WHEN p.id IS NOT NULL THEN 
+                        jsonb_build_object(
+                          'id', p.id,
+                          'nama', p.nama, 
+                          'harga', p.harga,
+                          'img_url', p.img_url
+                        )
+                      ELSE NULL 
+                    END
+                  )
+                ) FILTER (WHERE s.id IS NOT NULL),
+                '[]'
+              ) as slots
+          FROM mesin m
+          LEFT JOIN mesin_teknisi mt ON m.id = mt.mesin_id
+          LEFT JOIN slot s ON m.id = s.mesin_id
+          LEFT JOIN produk p ON s.produk_id = p.id
+          WHERE mt.teknisi_id = $1
+          GROUP BY m.id
+        `;
+        const result = await db.query(query, [teknisi_id]);
+        return result.rows;
+      } catch (err: any) {
+        console.error('Error fetching managed mesin for teknisi:', err);
+        throw new InternalServerErrorException(err.message || 'Data tidak ditemukan');
       }
-
-      const { data, error } = await query;
-      if(error) {
-        console.error("Error fetching log_mesin for teknisi:", error);
-        throw new InternalServerErrorException(error.message || "Gagal mengambil data log")};
-
-      return data;
     }
-     async findAllLogs(page: number, limit: number, search?: string, filter?: string) {
-      const supabase = this.supabaseService.getClient();
-      try{
-        const from = (page - 1) * limit;
-        const to = from + limit - 1;
-        let query = supabase
-          .from('log_mesin')
-          .select(`*, mesin!inner(*)`, { count: 'exact' })
-          .range(from, to)
-          .order('created_at', { ascending: false }); // Urutkan dari yang terbaru
 
-        if(filter && filter != "all"){
-          query = query.eq("tipe", filter);
+    async findManagedMesinLog(teknisi_id: string, filter?: string) {
+      const db = this.databaseService.getClient();
+      if (!teknisi_id) throw new BadRequestException('Pengenal tidak valid');
+
+      try {
+        let whereConditions: string[] = [];
+        let queryParams: any[] = [];
+        let paramIndex = 1;
+
+        whereConditions.push(`mt.teknisi_id = $${paramIndex}`);
+        queryParams.push(teknisi_id);
+        paramIndex++;
+
+        if (filter && filter !== 'all') {
+          whereConditions.push(`lm.tipe = $${paramIndex}`);
+          queryParams.push(filter);
+          paramIndex++;
         }
+
+        const whereClause = whereConditions.join(' AND ');
+
+        const query = `
+          SELECT lm.*,
+           CASE 
+                WHEN m.id IS NOT NULL THEN 
+                jsonb_build_object(
+                    'id', m.id,
+                    'nama', m.nama,
+                    'status', m.status
+                )
+                ELSE NULL 
+            END AS mesin
+          FROM log_mesin lm
+          INNER JOIN mesin m ON lm.mesin_id = m.id
+          INNER JOIN mesin_teknisi mt ON m.id = mt.mesin_id
+          WHERE ${whereClause}
+          ORDER BY lm.created_at DESC
+        `;
+
+        const result = await db.query(query, queryParams);
+        return result.rows;
+      } catch (err: any) {
+        console.error('Error fetching log_mesin for teknisi:', err);
+        throw new InternalServerErrorException(err.message || 'Gagal mengambil data log');
+      }
+    }
+
+    async findAllLogs(page: number, limit: number, search?: string, filter?: string) {
+      const db = this.databaseService.getClient();
+      try {
+        const { offset } = this.databaseService.getPaginationOffset(page, limit);
+
+        let whereConditions: string[] = [];
+        let queryParams: any[] = [];
+        let paramIndex = 1;
+
+        if (filter && filter !== 'all') {
+          whereConditions.push(`lm.tipe = $${paramIndex}`);
+          queryParams.push(filter);
+          paramIndex++;
+        }
+
         if (search) {
-          query = query.ilike('mesin.nama', `%${search}%`);
+          whereConditions.push(`m.nama ILIKE $${paramIndex}`);
+          queryParams.push(`%${search}%`);
+          paramIndex++;
         }
-    
-        const { data, error, count } = await query;
-  
-        const { data: stats, error:errorStats } = await supabase
-          .from('log_mesin')
-          .select(`
-            tipe
-          `);
-  
-          let countInfo, countSuccess, countWarning, countError, countDebug;
-        if(!errorStats){
-          countInfo = stats.filter(u => u.tipe === 'info').length;
-          countSuccess = stats.filter(u => u.tipe === 'success').length;
-          countWarning = stats.filter(u => u.tipe === 'warning').length;
-          countError = stats.filter(u => u.tipe === 'error').length;
-          countDebug = stats.filter(u => u.tipe === 'debug').length;
-        }else{
-          countInfo = 0;
-          countSuccess = 0;
-          countWarning = 0;
-          countError = 0;
-          countDebug = 0;
-        }
-        if (error) {
-          console.error("Error fetching log_mesin:", error);
-          // Gunakan InternalServerErrorException karena ini biasanya masalah query/database
-          throw new InternalServerErrorException(error.message);
-        }
-        
+
+        const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+        const mainQuery = `
+          SELECT lm.*,
+          CASE 
+                WHEN m.id IS NOT NULL THEN 
+                jsonb_build_object(
+                    'id', m.id,
+                    'nama', m.nama,
+                    'status', m.status
+                )
+                ELSE NULL 
+            END AS mesin
+          FROM log_mesin lm
+          INNER JOIN mesin m ON lm.mesin_id = m.id
+          ${whereClause}
+          ORDER BY lm.created_at DESC
+          LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+        `;
+        queryParams.push(limit, offset);
+
+        const result = await db.query(mainQuery, queryParams);
+        const data = result.rows;
+
+        const countQuery = `SELECT COUNT(*) as total FROM log_mesin lm INNER JOIN mesin m ON lm.mesin_id = m.id ${whereClause}`;
+        const countResult = await db.query(countQuery, whereConditions.length > 0 ? queryParams.slice(0, -2) : []);
+        const count = parseInt(countResult.rows[0].total, 10);
+
+        const statsQuery = `SELECT tipe, COUNT(*) as count FROM log_mesin GROUP BY tipe`;
+        const statsResult = await db.query(statsQuery);
+        const countInfo = statsResult.rows.find(r => r.tipe === 'info')?.count || 0;
+        const countSuccess = statsResult.rows.find(r => r.tipe === 'success')?.count || 0;
+        const countWarning = statsResult.rows.find(r => r.tipe === 'warning')?.count || 0;
+        const countError = statsResult.rows.find(r => r.tipe === 'error')?.count || 0;
+        const countDebug = statsResult.rows.find(r => r.tipe === 'debug')?.count || 0;
+
         return {
-          success: true, 
+          success: true,
           code: 200,
           data,
           metadata: {
             totalData: count,
-            awalEntri: from + 1,
-            akhirEntri: to + 1,
-            totalDataInfo: countInfo,
-            totalDataSuccess: countSuccess,
-            totalDataWarning: countWarning,
-            totalDataError: countError,
-            totalDataDebug: countDebug,
+            awalEntri: offset + 1,
+            akhirEntri: Math.min(offset + limit, count),
+            totalDataInfo: parseInt(countInfo, 10),
+            totalDataSuccess: parseInt(countSuccess, 10),
+            totalDataWarning: parseInt(countWarning, 10),
+            totalDataError: parseInt(countError, 10),
+            totalDataDebug: parseInt(countDebug, 10),
             currentPage: page,
-            totalPages: Math.ceil((count ?? 0) / limit),
+            totalPages: Math.ceil(count / limit),
             pageSize: limit,
           }
         };
-      }catch(err: any){
-        return {success: false, message: err.response.message || "Kegagalan Sistem", code: err.status};
+      } catch (err: any) {
+        throw new InternalServerErrorException(err.message || 'Gagal mengambil data log');
       }
     }
-    async add(body: any){
-      const supabase = this.supabaseService.getClient();
-      try{
 
-        const {nama, rows, total_slot, latitude, longitude, desa, kecamatan, kabupaten, provinsi, negara, kode_pos, slots, teknisi } = body;
-  
-        const { data: dataInsert, error: dbError } = await supabase
-        .rpc('tambah_mesin_dengan_slot',
-          {
-            d_nama: nama, 
-            d_row: rows,
-            d_total_slot: total_slot,
-            d_latitude: latitude,
-            d_longitude: longitude,
-            d_desa: desa,
-            d_kecamatan: kecamatan,
-            d_kabupaten: kabupaten,
-            d_provinsi: provinsi,
-            d_negara: negara,
-            d_kode_pos: kode_pos,
-            d_teknisi: teknisi,
-            d_data_slot: slots
-          }
-        );
-  
-        if (dbError) throw new BadRequestException(dbError.message);
-        if (dataInsert.success == false) throw new InternalServerErrorException(dataInsert.error);
-  
-        return {success: true, message: "Berhasil menambah data mesin", code: 200};
-      }catch(err: any){
-        return {success: false, message: err.response.message || "Kegagalan Sistem", code: err.status};
+    async add(body: any) {
+      const db = this.databaseService.getClient();
+      try {
+        const {
+          nama,
+          rows,
+          total_slot,
+          latitude,
+          longitude,
+          desa,
+          kecamatan,
+          kabupaten,
+          provinsi,
+          negara,
+          kode_pos,
+          slots,
+          teknisi,
+        } = body;
+
+        const query = `
+          SELECT * FROM tambah_mesin_dengan_slot(
+            $1, $2, $3, $4, $5,
+            $6, $7, $8, $9, $10,
+            $11, $12, $13
+          )
+        `;
+
+        const values = [
+          nama,
+          rows,
+          total_slot,
+          latitude,
+          longitude,
+          desa,
+          kecamatan,
+          kabupaten,
+          provinsi,
+          negara,
+          kode_pos,
+          JSON.stringify(teknisi),
+          JSON.stringify(slots),
+        ];
+
+        const result = await db.query(query, values);
+
+        const dataInsert = result.rows[0].tambah_mesin_dengan_slot
+
+        console.log(result)
+        if (!dataInsert.success) {
+          throw new InternalServerErrorException(dataInsert.error);
+        }
+
+        return {
+          success: true,
+          message: 'Berhasil menambah data mesin',
+          code: 200,
+        };
+      } catch (err: any) {
+        console.log(err);
+        throw err
       }
+
     }
+
     async update(id: string, body: any) {
+      const db = this.databaseService.getClient();
+      console.log(body);
 
-      const supabase = this.supabaseService.getClient();
-      // 1. Ambil data lama
-      try{
+      try {
+        // =========================
+        // AMBIL DATA LAMA
+        // =========================
 
-        const { data: oldMesin } = await supabase.from("mesin").select("*").eq("id", id).single();
-        const { data: oldSlots } = await supabase.from("slot").select("*").eq("mesin_id", id);
-        const { data: oldTeknisi } = await supabase.from("mesin_teknisi").select("*, user_profiles(nama, email, urlPasfoto)").eq("mesin_id", id);
-  
+        const oldMesinResult = await db.query(
+          `SELECT * FROM mesin WHERE id = $1 LIMIT 1`,
+          [id]
+        );
+
+        const oldSlotsResult = await db.query(
+          `SELECT * FROM slot WHERE mesin_id = $1`,
+          [id]
+        );
+
+        const oldTeknisiResult = await db.query(
+          `
+          SELECT 
+            mt.*,
+            json_build_object(
+              'nama', up.nama,
+              'email', up.email,
+              'urlPasfoto', up."urlPasfoto"
+            ) as users
+          FROM mesin_teknisi mt
+          LEFT JOIN users up
+            ON up.id = mt.teknisi_id
+          WHERE mt.mesin_id = $1
+          `,
+          [id]
+        );
+
+        const oldMesin = oldMesinResult.rows[0];
+        const oldSlots = oldSlotsResult.rows;
+        const oldTeknisi = oldTeknisiResult.rows;
+
         let itemToUpsert: any[] = [];
-
         let TeknisiToUpsert: any[] = [];
-        
-        // 2. Tentukan mana yang mau disimpan (Upsert)
-        body.slots.forEach((s) => {
-          s.col.forEach((item) => {
-            const oldSlot = oldSlots?.find(old => old.kode === item.kode);
-  
-            // Cek apakah data baru berbeda dengan data lama (Deep Comparison sederhana)
-            const isChanged = !oldSlot || oldSlot.produk_id !== item.produk_id || oldSlot.stock !== item.stock ||
-                              oldSlot.metadata?.span !== item.span || 
-                              JSON.stringify(oldSlot.metadata?.gabungan) !== JSON.stringify(item.gabungan);
-  
-            if (isChanged) {
-              itemToUpsert.push({
-                kode: item.kode,
+
+        // =========================
+        // CEK SLOT YANG BERUBAH
+        // =========================
+        if(body.slots){
+
+          body.slots.forEach((s: any) => {
+            s.col.forEach((item: any) => {
+              const oldSlot = oldSlots.find(
+                (old: any) => old.kode === item.kode
+              );
+              
+              const isChanged =
+              !oldSlot ||
+              oldSlot.produk_id !== item.produk_id ||
+              oldSlot.stock !== item.stock ||
+              oldSlot.metadata?.span !== item.span ||
+              JSON.stringify(oldSlot.metadata?.gabungan) !==
+              JSON.stringify(item.gabungan);
+              
+              if (isChanged) {
+                itemToUpsert.push({
+                  kode: item.kode,
+                  mesin_id: id,
+                  produk_id: item.produk_id || null,
+                  stock: item.stock || 0,
+                  metadata: {
+                    span: item.span,
+                    gabungan: item.gabungan,
+                    row_number: s.row_number,
+                    col_number: item.col_number,
+                  },
+                });
+              }
+            });
+          });
+        }
+
+        // =========================
+        // CEK TEKNISI BARU
+        // =========================
+        if(body.teknisi){
+
+          body.teknisi.forEach((item: any) => {
+            const old = oldTeknisi.find(
+              (old: any) => old.teknisi_id === item.id
+            );
+            
+            if (!old) {
+              TeknisiToUpsert.push({
                 mesin_id: id,
-                ...(item.produk_id && {produk_id: item.produk_id}),
-                ...(item.stock && {stock: item.stock}),
-                metadata: {
-                  span: item.span,
-                  gabungan: item.gabungan,
-                  row_number: s.row_number,
-                  col_number: item.col_number,
-                }
+                teknisi_id: item.id,
               });
             }
           });
-        });
 
-        body.teknisi.forEach((item) => {
-
-          const old = oldTeknisi?.find(old => old.teknisi_id === item.user_id);
-          if (!old) {
-            TeknisiToUpsert.push({
-              mesin_id: id,
-              teknisi_id: item.user_id
-            });
-          }
-        });
-
-        // 3. Tentukan mana yang mau dihapus
-        const incomingKodes = body.slots.flatMap(s => s.col.map(item => item.kode));
-        const itemsToDelete = oldSlots?.filter(old => !incomingKodes.includes(old.kode)) || [];
-        const TeknsiisDelete = oldTeknisi?.filter(old => !body.teknisi.map(t => t.user_id).includes(old.teknisi_id)) || [];
-  
-        // --- EKSEKUSI DATABASE ---
-  
-        // A. Upsert (Gunakan satu kali panggil untuk semua data, jangan di .map)
-        if (itemToUpsert.length > 0) {
-          const { error: errUpsert } = await supabase
-            .from("slot")
-            .upsert(itemToUpsert, { onConflict: 'mesin_id, kode' }); // Gunakan koma, bukan &&
-  
-          if (errUpsert) throw new InternalServerErrorException(errUpsert.message);
         }
+        // =========================
+        // DATA YANG DIHAPUS
+        // =========================
+        
+        const incomingKodes = body.slots.flatMap((s: any) =>
+          s.col.map((item: any) => item.kode)
+        );
+
+        const itemsToDelete =
+          oldSlots.filter(
+            (old: any) => !incomingKodes.includes(old.kode)
+          ) || [];
+        
+        let TeknisiDelete :any[]= [];
+        if(body.teknisi){
+          TeknisiDelete =
+            oldTeknisi.filter(
+              (old: any) =>
+                !body.teknisi
+                  .map((t: any) => t.id)
+                  .includes(old.teknisi_id)
+            ) || [];
+
+        }
+
+        // =========================
+        // UPSERT SLOT
+        // =========================
+
+        if (itemToUpsert.length > 0) {
+          for (const item of itemToUpsert) {
+            await db.query(
+              `
+              INSERT INTO slot (
+                kode,
+                mesin_id,
+                produk_id,
+                stock,
+                metadata
+              )
+              VALUES ($1, $2, $3, $4, $5)
+              ON CONFLICT (mesin_id, kode)
+              DO UPDATE SET
+                produk_id = EXCLUDED.produk_id,
+                stock = EXCLUDED.stock,
+                metadata = EXCLUDED.metadata,
+                updated_at = NOW()
+              `,
+              [
+                item.kode,
+                item.mesin_id,
+                item.produk_id,
+                item.stock,
+                JSON.stringify(item.metadata),
+              ]
+            );
+          }
+        }
+
+        // =========================
+        // UPSERT TEKNISI
+        // =========================
 
         if (TeknisiToUpsert.length > 0) {
-          console.log("Teknisi to upsert:", TeknisiToUpsert);
-          const { error: errUpsert } = await supabase
-            .from("mesin_teknisi")
-            .upsert(TeknisiToUpsert, { onConflict: 'mesin_id, teknisi_id' }); // Gunakan koma, bukan &&
-  
-          if (errUpsert) throw new InternalServerErrorException(errUpsert.message);
+          for (const item of TeknisiToUpsert) {
+            await db.query(
+              `
+              INSERT INTO mesin_teknisi (
+                mesin_id,
+                teknisi_id
+              )
+              VALUES ($1, $2)
+              ON CONFLICT (mesin_id, teknisi_id)
+              DO NOTHING
+              `,
+              [item.mesin_id, item.teknisi_id]
+            );
+          }
         }
-  
-        // B. Delete
+
+        // =========================
+        // DELETE SLOT
+        // =========================
+
         if (itemsToDelete.length > 0) {
-          const deleteIds = itemsToDelete.map(item => item.id);
-          const { error: errDel } = await supabase.from('slot').delete().in('id', deleteIds);
-          if (errDel) throw new InternalServerErrorException(errDel.message);
-  
+          const deleteIds = itemsToDelete.map(
+            (item: any) => item.id
+          );
+
+          await db.query(
+            `DELETE FROM slot WHERE id = ANY($1::uuid[])`,
+            [deleteIds]
+          );
         }
-        if (TeknsiisDelete.length > 0) {
-          const deleteIds = TeknsiisDelete.map(item => item.id);
-          const { error: errDel } = await supabase.from('mesin_teknisi').delete().in('id', deleteIds);
-          if (errDel) throw new InternalServerErrorException(errDel.message);
-  
+
+        // =========================
+        // DELETE TEKNISI
+        // =========================
+
+        if (TeknisiDelete.length > 0) {
+          const deleteIds = TeknisiDelete.map(
+            (item: any) => item.id
+          );
+
+          await db.query(
+            `DELETE FROM mesin_teknisi WHERE id = ANY($1::uuid[])`,
+            [deleteIds]
+          );
         }
-  
-        // C. Update Mesin
-        const isMesinChanged = 
-          (body.nama !== undefined && body.nama !== oldMesin.nama) || 
-          (body.lokasi !== undefined && body.lokasi !== oldMesin.lokasi) || 
-          (body.latitude !== undefined && body.latitude !== oldMesin.latitude) || 
-          (body.longitude !== undefined && body.longitude !== oldMesin.longitude) || 
-          (body.desa !== undefined && body.desa !== oldMesin.desa) || 
-          (body.kecamatan !== undefined && body.kecamatan !== oldMesin.desa) || 
-          (body.kabupaten !== undefined && body.kabupaten !== oldMesin.desa) || 
-          (body.negara !== undefined && body.negara !== oldMesin.desa) || 
-          (body.provinsi !== undefined && body.provinsi !== oldMesin.provinsi) || 
-          (body.kode_pos !== undefined && body.kode_pos !== oldMesin.kode_pos) || 
-          (body.row_slot !== undefined && body.row_slot !== oldMesin.row_slot) || 
-          (body.total_slot !== undefined && body.total_slot !== oldMesin.total_slot) ||
-          (body.teknisi_id !== undefined && body.teknisi_id !== oldMesin.teknisi_id);
-  
+
+        // =========================
+        // UPDATE MESIN
+        // =========================
+
+        const isMesinChanged =
+          (body.nama !== undefined &&
+            body.nama !== oldMesin.nama) ||
+          
+          (body.latitude !== undefined &&
+            body.latitude !== oldMesin.latitude) ||
+          (body.longitude !== undefined &&
+            body.longitude !== oldMesin.longitude) ||
+          (body.desa !== undefined &&
+            body.desa !== oldMesin.desa) ||
+          (body.kecamatan !== undefined &&
+            body.kecamatan !== oldMesin.kecamatan) ||
+          (body.kabupaten !== undefined &&
+            body.kabupaten !== oldMesin.kabupaten) ||
+          (body.negara !== undefined &&
+            body.negara !== oldMesin.negara) ||
+          (body.provinsi !== undefined &&
+            body.provinsi !== oldMesin.provinsi) ||
+          (body.kode_pos !== undefined &&
+            body.kode_pos !== oldMesin.kode_pos) ||
+          (body.row_slot !== undefined &&
+            body.row_slot !== oldMesin.row_slot) ||
+          (body.total_slot !== undefined &&
+            body.total_slot !== oldMesin.total_slot);
+
+        let dataUpdateMesin: any = null;
+
         if (isMesinChanged) {
-          const { data: dataUpdateMesin, error: errUpdateMesin } = await supabase
-            .from("mesin")
-            .update({
-              nama: body.nama,
-              lokasi: body.lokasi,
-              row_slot: body.row_slot,
-              total_slot: body.total_slot,
-              latitude: body.latitude,
-              longitude: body.longitude,
-              desa: body.desa,
-              kecamatan: body.kecamatan,
-              kabupaten: body.kabupaten,
-              provinsi: body.provinsi,
-              negara: body.negara,
-              kode_pos: body.kode_pos,
-              updated_at: new Date(Date.now()).toISOString()
-            })
-            .select("*, slot(produk_id, kode, stock, metadata, produk(nama, harga, img_url))")
-            .eq("id", id)
-            .single();
-  
+          const updateResult = await db.query(
+            `
+            UPDATE mesin
+            SET
+              nama = $1,
+              row_slots = $2,
+              total_slot = $3,
+              latitude = $4,
+              longitude = $5,
+              desa = $6,
+              kecamatan = $7,
+              kabupaten = $8,
+              provinsi = $9,
+              negara = $10,
+              kode_pos = $11,
+              updated_at = NOW()
+            WHERE id = $12
+            RETURNING *
+            `,
+            [
+              body.nama,
+              body.row_slot,
+              body.total_slot,
+              body.latitude,
+              body.longitude,
+              body.desa,
+              body.kecamatan,
+              body.kabupaten,
+              body.provinsi,
+              body.negara,
+              body.kode_pos,
+              id,
+            ]
+          );
 
-          if (errUpdateMesin) throw new InternalServerErrorException(errUpdateMesin.message);
-  
-          await this.sendMqtt(`mesin/${dataUpdateMesin.kode}/detail`, { dataUpdateMesin }, 1);
+          dataUpdateMesin = updateResult.rows[0];
+
+          // ambil slot + produk
+          const slotResult = await db.query(
+            `
+            SELECT
+              s.produk_id,
+              s.kode,
+              s.stock,
+              s.metadata,
+              json_build_object(
+                'nama', p.nama,
+                'harga', p.harga,
+                'img_url', p.img_url
+              ) as produk
+            FROM slot s
+            LEFT JOIN produk p
+              ON p.id = s.produk_id
+            WHERE s.mesin_id = $1
+            `,
+            [id]
+          );
+
+          dataUpdateMesin.slot = slotResult.rows;
+
+          await this.sendMqtt(
+            `mesin/${dataUpdateMesin.kode}/detail`,
+            { dataUpdateMesin },
+            1
+          );
         }
 
-        return { success: true, message: "Berhasil mengubah data", code: 200 };
-      }catch(err: any){
+        return {
+          success: true,
+          message: "Berhasil mengubah data",
+          code: 200,
+        };
+      } catch (err: any) {
         console.log("Error nyah:", err);
         throw err;
       }
     }
 
     async delete(body: { id: string[] }) {
-      const supabase = this.supabaseService.getClient();
+      const db = this.databaseService.getClient();
       try{
 
         if (!body.id || body.id.length === 0) {
@@ -381,44 +704,66 @@ export class MesinService {
         }
     
         // Gunakan .in() untuk menghapus semua ID dalam satu array sekaligus
-          const { error } = await supabase
-            .from("mesin")
-            .delete()
-            .in('id', body.id); // Menghapus baris yang ID-nya ada di dalam array body.id
-    
-        if (error) {
-          throw new BadRequestException(error.message);
-        }
+        await db.query(`DELETE FROM mesin WHERE id = ANY($1)`, [body.id]);
+        
     
         return { success: true, message: 'Mesin berhasil dihapus', code: 200 };
       }catch(err:any){
-        return {success: false, message: err.response.message || "Kegagalan Sistem", code: err.status};
+        throw err;
       }
     }
 
     async updateStatus(status: string, kode: string){
-      const supabase = this.supabaseService.getClient();
+      const db = this.databaseService.getClient();
 
       try{
-        const { data: oldMesin, error: errOldMesin } = await supabase
-        .from("mesin")
-        .select("status")
-        .eq("kode", kode)
-        .single();
 
-        if(errOldMesin) throw new InternalServerErrorException(errOldMesin.message, "Gagal memvalidasi data mohon coba lagi beberapa saat");
+        const queryOldMesin = await db.query(
+          `SELECT status FROM mesin WHERE kode = $1`, 
+          [kode]
+        );
+
+        const oldMesin = queryOldMesin.rows[0]
 
         if(oldMesin.status === status) throw new BadRequestException("Permintaan tidak bisa dilanjutkan");
 
-        const { data: dataMesin,error: errorUpdate } = await supabase
-          .from("mesin")
-          .update({ status: status })
-          .eq("kode", kode)
-          .select("*, slot(produk_id, kode, stock, metadata, produk(nama, harga, img_url))")
-          .single();
-        if (errorUpdate) {
-          throw new InternalServerErrorException(errorUpdate?.message || "Gagal memperbarui status mesin");
-        }
+        const queryUpdateMesin = `
+          WITH updated_mesin AS (
+            UPDATE mesin 
+            SET status = $1 
+            WHERE kode = $2 
+            RETURNING *
+          )
+          SELECT 
+            m.*,
+            COALESCE(
+              (
+                SELECT json_agg(
+                  json_build_object(
+                    'produk_id', s.produk_id,
+                    'kode', s.kode,
+                    'stock', s.stock,
+                    'metadata', s.metadata,
+                    'produk', (
+                      SELECT json_build_object(
+                        'nama', p.nama,
+                        'harga', p.harga,
+                        'img_url', p.img_url
+                      )
+                      FROM produk p 
+                      WHERE p.id = s.produk_id
+                    )
+                  )
+                )
+                FROM slot s 
+                WHERE s.mesin_id = m.id -- Asumsi: relasi tabel slot ke mesin menggunakan mesin_id atau kode_mesin
+              ), 
+              '[]'::json
+            ) AS slot
+          FROM updated_mesin m;
+        `;
+        const resDataMesin = await db.query(queryUpdateMesin, [status, kode]);
+        const dataMesin = resDataMesin.rows[0]
         let messageLog = "";
         if(status === "online"){
           messageLog = `Mesin ${dataMesin?.nama} sekarang Online`;
@@ -429,51 +774,42 @@ export class MesinService {
         } else if(status === "maintenance"){
           messageLog = `Mesin ${dataMesin?.nama} sedang dalam perawatan`;
         }
-          const { error: errorLogs } = await supabase
-          .from("log_mesin")
-          .insert({
-            mesin_id: dataMesin?.id,
-            tipe: status,
-            payload : {
+
+        await db.query(`INSERT INTO log_mesin 
+          (
+          mesin_id,
+          tipe,
+          payload ) VALUES ($1, $2, $3);`, [dataMesin.id, status, {
               kode: kode,
               message: messageLog,
               waktu: new Date(Date.now()).toISOString(),
-            }
-          })
-          if (errorLogs) {
-            throw new InternalServerErrorException(errorLogs?.message || "Gagal memperbarui status mesin");
-          }
+            }])
+          
       }catch(err: any){
-        return;
+        throw err;
       }
 
       
     }
     async updateStockSlot(idMesin: string, dataSlot: any[]){
-      const supabase = this.supabaseService.getClient();
+      const db = this.databaseService.getClient();
       try{
         if(!dataSlot || !idMesin) throw new NotFoundException("data tidak lengkap");
-        
-        const { data: dataMesin, error: errMesin } = await supabase
-        .from("mesin")
-        .select("*")
-        .eq("id", idMesin)
-        .single();
-        
-        if(errMesin) throw new InternalServerErrorException("Gagal Mengambil data mesin");
 
+        const resDataMesin = await db.query(`SELECT * FROM mesin WHERE id = $1;`, [idMesin]);
+        
+        const dataMesin = resDataMesin.rows[0]
+        
         if(dataMesin.status != 'maintenance') throw new BadRequestException("Perubahan tidak diperbolehkan");
 
-        const { data: dataUpdate, error: errorUpdate } = await supabase.rpc('bulk_add_stock', {
-          d_items: dataSlot,
-          p_mesin_id: idMesin 
-        });
-        console.log("whaata?:", dataSlot);
-        console.log("whaata?:", idMesin);
-        console.log("whaata?:", errorUpdate);
-        if (errorUpdate ) {
-          throw new InternalServerErrorException(errorUpdate?.message || "Gagal memperbarui stock");
-        }
+        const d_items = dataSlot;
+        const d_mesin_id = idMesin;
+
+       await db.query(
+        `SELECT * FROM bulk_add_stock($1, $2)`, 
+        [JSON.stringify(d_items), d_mesin_id] // <--- Bungkus dengan JSON.stringify()
+      );
+    
       
         return { success: true, message: "Berhasil mengubah stock", code: 200};
       }catch(err: any){

@@ -36,6 +36,8 @@ export default function MesinPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+  const minIoHost = import.meta.env.VITE_MINIO_HOST;
+  const minIoPort = import.meta.env.VITE_MINIO_PORT;
    const columns = [
     { key: "kode", label: "Kode" },
     { key: "nama", label: "Nama" },
@@ -80,6 +82,10 @@ export default function MesinPage() {
   useEffect(() => {
     setSelected([]);
   }, [mesin])
+
+  useEffect(()=> {
+    console.log(dataSlot);
+  },[dataSlot])
   
   if (error) return <div className="p-10 text-red-500 bg-[#121212] min-h-screen">Gagal memuat data: {(error as any).message}</div>;
 
@@ -298,16 +304,16 @@ export default function MesinPage() {
                        <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2">
 
-                            {row.mesin_teknisi.length > 0 ? (
+                            {row.teknisi.length > 0 ? (
                               <>
-                              {row.mesin_teknisi.slice(0, 2).map((item :any) => 
+                              {row.teknisi.slice(0, 2).map((item :any, index: number) => 
                                 item.urlPasfoto ? (
-                                  <div key={item.user_id} className="flex items-center gap-1">
-                                    <img src={item.urlPasfoto} className='w-9 h-9 rounded-full' alt="" />
+                                  <div key={`${item.id}-${index}`} className="flex items-center gap-1">
+                                    <img src={`http://${minIoHost}:${minIoPort}/${item.urlPasfoto}`} className='w-9 h-9 rounded-full' alt="" />
                                     <span className="text-sm font-medium text-slate-800 dark:text-gray-300">{item.nama}</span>
                                   </div>
                                 ) : (
-                                  <div key={item.user_id} className="flex items-center gap-1">
+                                  <div key={`${item.id}-${index}`} className="flex items-center gap-1">
                                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                                       {item.nama.charAt(0)}
                                     </div>
@@ -315,10 +321,12 @@ export default function MesinPage() {
                                   </div>
                                 )
                               )}
-                              {row.mesin_teknisi.length > 2 && (
-                                <span> dan {row.mesin_teknisi.length - 2} teknisi lainnya</span>
+
+                              {row.teknisi.length > 2 && (
+                                <span> dan {row.teknisi.length - 2} teknisi lainnya</span>
                               )}
                               </>
+                              
                             ) :  <p className='text-sm text-slate-600 dark:text-gray-400'>Tidak ada teknisi</p>
                             }
                           </div>
@@ -333,7 +341,7 @@ export default function MesinPage() {
                           }} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-slate-800 transition">
                             <PenLine size={14}/>
                           </button>
-                          <button onClick={() => {setOpenModalSlot(true); setDataSSlot(row)}} className="p-1.5 rounded-lg text-slate-400 hover:text-teal-500 hover:bg-red-50 dark:hover:bg-slate-800 transition">
+                          <button onClick={() => { setDataSSlot(row); setOpenModalSlot(true);}} className="p-1.5 rounded-lg text-slate-400 hover:text-teal-500 hover:bg-red-50 dark:hover:bg-slate-800 transition">
                             <Table size={14}/>
                           </button>
                           <button onClick={() => {

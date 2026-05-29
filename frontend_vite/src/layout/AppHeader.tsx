@@ -13,6 +13,8 @@ export function Header() {
   const location = useLocation();
   const [openDropdown, setOpenDropdown] = useState(false);
   const navigate = useNavigate();
+  const minIoHost = import.meta.env.VITE_MINIO_HOST;
+  const minIoPort = import.meta.env.VITE_MINIO_PORT;
   // const [theme, setTheme] = useState(localStorage.getItem("theme") || "system");
 
   // useEffect(() => {
@@ -96,7 +98,7 @@ export function Header() {
             </nav>
           </div>
 
-          {loadingAuth ? <div className="py-4 px-15 bg-blue-50 dark:bg-slate-800 rounded-xl animate-pulse"/> : (
+          {(loadingAuth || !profile) ? <div className="py-4 px-15 bg-blue-50 dark:bg-slate-800 rounded-xl animate-pulse"/> : (
 
             <div className="relative">
               <button
@@ -106,7 +108,7 @@ export function Header() {
                 onBlur={() => setTimeout(() => setOpenDropdown(false), 200)}
               >
                 {profile.urlPasfoto &&
-                <img src={profile.urlPasfoto} alt="" className="w-7 h-7 rounded-full" />
+                <img src={`http://${minIoHost}:${minIoPort}/${profile.urlPasfoto}`} alt="" className="w-7 h-7 rounded-full" />
                 }
                 <span>Hai {profile?.nama || profile?.email || "anda belum login"}
                   👋

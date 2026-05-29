@@ -59,6 +59,8 @@ export default function Home() {
   const { profile, loading: loadingAuth } = useAuth();
   const [activeLogFilter, setActiveLogFilter] = useState("all");
 
+  const token = localStorage.getItem("access_token");
+
   const [activeSumFilter, setActiveSumFilter] = useState("bulan");
 
   const [summaryRange, setSummaryRange] = useState<DateValueType>({
@@ -88,10 +90,14 @@ export default function Home() {
     // Sangat penting: masukkan searchTerm ke queryKey agar otomatis refetch sfaat ketik
     queryKey: ['logMesin', searchLogMesin, page, pageSize, activeLogFilter], 
     queryFn: () => getLogMesin(searchLogMesin, page, pageSize, activeLogFilter),
+    enabled: !!token,
+
   });
   const { data: dataDashboard, isLoading: isLoadingDashboard, error: errorDataDashboard } = useQuery({
     queryKey: ['dashboard', summaryRange, activeSumFilter === 'custom' ? 'all-custom' : activeSumFilter], 
     queryFn: () => getDataDashboard(activeSumFilter, summaryRange?.startDate, summaryRange?.endDate),
+    enabled: !!token,
+
   });
 
   const chartData = {
@@ -139,7 +145,7 @@ export default function Home() {
   });
   
   useEffect(() => {
-    console.log('dataSekarang:', dataSummarySekarang)
+    console.log('dataSekarang:', dataSummarySekarang) 
   }, [dataSummarySekarang])
 
   const getPrevKey = (activeSumFilter :any) => {
@@ -377,7 +383,7 @@ export default function Home() {
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-gray-500 dark:text-gray-400">
                       
-                      {(logMesin.data ?? []).length === 0 ? "0 entries" : `${logMesin.metadata.awalEntri}–${logMesin.metadata.akhirEntri} dari ${logMesin.metadata.totalData}`}
+                      {(logMesin.data ?? []).length === 0 ? "0 entries" : `${logMesin.metadata.awalEntri}–${logMesin.metadata.akhirEntri} dari ${logMesin?.metadata?.totalData}`}
                  
                   </span>
                  
@@ -395,7 +401,7 @@ export default function Home() {
                             {n}
                         </option>
                         ))}
-                        <option key={logMesin.metadata.totalData || 0} value={logMesin.metadata.totalData || 0}>
+                        <option key={logMesin?.metadata?.totalData || 0} value={logMesin?.metadata?.totalData || 0}>
                             Semua
                         </option>
                       </select>
@@ -403,7 +409,7 @@ export default function Home() {
 
                 </div>
                         
-                <Pagination page={page} totalPages={logMesin.metadata.totalPages || 0} onPageChange={setPage} />
+                <Pagination page={page} totalPages={logMesin?.metadata?.totalPages || 0} onPageChange={setPage} />
                 
               </div>
               )}

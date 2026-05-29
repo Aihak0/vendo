@@ -62,20 +62,25 @@ export class DashboardService {
             LIMIT 5;
         `;
         
-        // 3. Query Mesin (Memperbaiki typo user_profiles)
+        // 3. Query Mesin (Memperbaiki typo user_profiles) 
         const queryGetMesin = `
-            SELECT 
-                mesin.id, 
-                mesin.nama, 
-                mesin.status, 
-                mesin.latitude, 
-                mesin.longitude, 
-                user_profiles.nama AS nama_teknisi, 
-                user_profiles.email, 
-                user_profiles.urlPasfoto 
-            FROM mesin 
-            INNER JOIN mesin_teknisi ON mesin.id = mesin_teknisi.mesin_id 
-            INNER JOIN user_profiles ON mesin_teknisi.teknisi_id = user_profiles.user_id;
+            SELECT
+            m.*,
+              COALESCE(
+                json_agg(
+                  DISTINCT jsonb_build_object(
+                    'teknisi_id', mt.teknisi_id,
+                    'nama', up.nama,
+                    'email', up.email,
+                    'urlPasfoto', up."urlPasfoto"
+                  )
+                ) FILTER (WHERE mt.teknisi_id IS NOT NULL),
+                '[]'
+              ) as teknisi
+            FROM mesin m
+            LEFT JOIN mesin_teknisi mt ON m.id = mt.mesin_id
+            LEFT JOIN users up ON mt.teknisi_id = up.id
+            GROUP BY m.id
         `;
         
         // Eksekusi semua query ke Postgres lokal
@@ -87,7 +92,7 @@ export class DashboardService {
         ]);
     
         return {
-            data_summary: resSummary.rows,
+            data_summary: resSummary.rows[0].get_transaksi_summary,
             data_log: resLogs.rows,
             data_mesin: resMesin.rows
         };

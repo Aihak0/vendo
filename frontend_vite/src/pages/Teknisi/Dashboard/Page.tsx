@@ -35,43 +35,48 @@ export default function PageDashboardTeknisi(){
 
     const { data, isLoading, error } = useQuery({
         // Gunakan profile?.user_id langsung di queryKey
-        queryKey: ['ManagedMesin', profile?.user_id],
+        queryKey: ['ManagedMesin', profile?.id],
         
         // Fungsi hanya akan dijalankan jika profile?.user_id ada
-        queryFn: () => getManagedMesin(profile.user_id),
+        queryFn: () => getManagedMesin(profile.id),
         
         // KUNCINYA DI SINI: Query tidak akan jalan selama user_id belum ada
-        enabled: !!profile?.user_id, 
+        enabled: !!profile?.id, 
     });
 
     const [activeLogFilter, setActiveLogFilter] = useState("all");
     const [ prioritas, setPrioritas] = useState("all");    
     const { data: dataLogs, isLoading: loadingLogs, error: errorLogs } = useQuery({
         // Gunakan profile?.user_id langsung di queryKey
-        queryKey: ['ManagedMesinLogs', profile?.user_id, activeLogFilter],
+        queryKey: ['ManagedMesinLogs', profile?.id, activeLogFilter],
         
         // Fungsi hanya akan dijalankan jika profile?.user_id ada
-        queryFn: () => getManagedMesinLogs(profile.user_id, activeLogFilter),
+        queryFn: () => getManagedMesinLogs(profile.id, activeLogFilter),
         
         // KUNCINYA DI SINI: Query tidak akan jalan selama user_id belum ada
-        enabled: !!profile?.user_id, 
+        enabled: !!profile?.id, 
     });
     const { data: dataTask, isLoading: loadingTasks, error: errorTasks } = useQuery({
         // Gunakan profile?.user_id langsung di queryKey
-        queryKey: ['MyTask', profile?.user_id, prioritas],
+        queryKey: ['MyTask', profile?.id, prioritas],
         
         // Fungsi hanya akan dijalankan jika profile?.user_id ada
-        queryFn: () => getMyTask(profile.user_id, prioritas),
+        queryFn: () => getMyTask(profile.id, prioritas),
         
         // KUNCINYA DI SINI: Query tidak akan jalan selama user_id belum ada
-        enabled: !!profile?.user_id, 
+        enabled: !!profile?.id, 
     });
+
+    const minIoHost = import.meta.env.VITE_MINIO_HOST;
+    const minIoPort = import.meta.env.VITE_MINIO_PORT;
     const [ isMesinInfoModalOpen, setIsMesinInfoModalOpen] = useState(false);    
     const [dataInfo, setDataInfo] = useState<Mesin | null>(null);
     const [ isMesinMaintenanceModalOpen, setIsMesinMaintenanceModalOpen] = useState(false);
     const [dataMesinMaintenance, setdataMesinMaintenance] = useState<Mesin | null>(null);
     const getStructuredSlot = (slots: SlotData[] = []) => {
         // 1. Grouping menggunakan reduce
+
+        // console.log("slotsss",slots)
         const groupedByRow = slots.reduce((acc: SlotRow[], curr) => {
             const rowNum = curr.metadata.row_number;
             let row = acc.find((r) => r.row_number === rowNum);
@@ -110,7 +115,7 @@ export default function PageDashboardTeknisi(){
     };
 
     useEffect(() => {
-        console.log(data)
+        console.log("datana",data)
     },[data])
     return ( 
         <div className="">
@@ -144,7 +149,8 @@ export default function PageDashboardTeknisi(){
                         </>
                     ): (
                         data.map((row: any) => {
-                            const slot = getStructuredSlot(row?.slot || []);
+                            // console.log("real slot", row.slots);
+                            const slot = getStructuredSlot(row?.slots || []);
                             const lokasiLengkap = [row.desa, row.kecamatan, row.kabupaten].filter(Boolean).join(', ')
                             return(
                             <div key={row.id} className="bg-white dark:bg-slate-800 rounded-lg h-fit p-5 text-slate-700 dark:text-gray-300 border border-blue-100 dark:border-blue-900">
@@ -185,7 +191,7 @@ export default function PageDashboardTeknisi(){
                                                                                 
                                                                             <div className="flex items-center gap-2">
                                                                                 <span className="left-3 top-2 text-xs">{c.kode}</span>
-                                                                                <img src={`${c?.produk.img_url}` } className="w-8 h-8 rounded-lg" alt="" />
+                                                                                <img src={`http://${minIoHost}:${minIoPort}/${c?.produk.img_url}` } className="w-8 h-8 rounded-lg" alt="" />
 
                                                                                 <div className="flex items-center">
                                                                                     <p className="text-xs dark:text-gray-300 p-auto">{c.produk?.nama}</p> 
@@ -351,7 +357,7 @@ export default function PageDashboardTeknisi(){
                                         </div>
                                         <div className='flex gap-2 items-center mb-1 mx-5'>
                                          
-                                                <span className="text-[12px] font-bold text-gray-400 dark:text-gray-400 font-mono truncate">{tsk.mesin.nama}</span>
+                                                <span className="text-[12px] font-bold text-gray-400 dark:text-gray-400 font-mono truncate">{tsk.mesin_nama}</span>
                                        
                                      
                                            

@@ -15,13 +15,22 @@ export class AuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     
+    try {
     // Ambil token dari header Authorization
-    const authHeader = request.headers.authorization;
-    if (!authHeader) throw new UnauthorizedException('Token tidak ditemukan');
+    if (request.method === 'OPTIONS') {
+      return true;
+    }
+    // console.log("METHOD:", request.method);
+    // console.log("URL:", request.url);
+    // console.log("AUTH:", request.headers.authorization);
+    const authHeader = request.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new UnauthorizedException('Token tidak ditemukan atau format salah');
+    }
     
     const token = authHeader.split(' ')[1];
     if (!token) throw new UnauthorizedException('Format token salah');
-
+ 
     // Cek Cache internal (In-Memory)
     const cached = this.userCache.get(token);
     if (cached && cached.expiry > Date.now()) {
@@ -29,7 +38,6 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
-    try {
       console.log('🌐 Memverifikasi token via database VM 3...');
       
       // 1. Verifikasi dan bedah isi JWT Token
@@ -45,12 +53,12 @@ export class AuthGuard implements CanActivate {
 
       // 3. Query ke tabel user lokal di VM 3
       const queryText = `
-        SELECT id, email, username, name, role 
+        SELECT id, email, username, role 
         FROM users 
         WHERE id = $1 
         LIMIT 1
       `;
-      
+      // console.log("userid => ", userId)
       const result = await db.query(queryText, [userId]);
 
       // KOREKSI 3: Antisipasi jika token valid tapi user-nya sudah dihapus dari database
@@ -71,6 +79,8 @@ export class AuthGuard implements CanActivate {
       return true;
 
     } catch (e: any) {
+
+      // console.log(e)
       // KOREKSI 2: Tangkap error JWT (seperti expired atau invalid secret) dan bungkus dengan UnauthorizedException
       throw new UnauthorizedException(e.message || 'Token tidak valid atau kedaluwarsa');
     }
