@@ -29,6 +29,14 @@ export default function ProductPage() {
   const [sortAsc, setSortAsc] = useState(true);
   const [selected, setSelected] = useState<any[]>([]);
 
+  const minIoHost = import.meta.env.VITE_MINIO_HOST;
+  const minIoPort = import.meta.env.VITE_MINIO_PORT;
+
+  const formatIDR = new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+  });
+
   
   const columns = [
     { key: "img_url", label: "Gambar" },
@@ -266,7 +274,7 @@ export default function ProductPage() {
                       
                       {row.img_url ? (
                         <div className="flex items-center gap-3">
-                          <img src={row.img_url} className='w-15' alt="" />
+                          <img src={`http://${minIoHost}:${minIoPort}/${row.img_url}`} className='w-15' alt="" />
                           
                         </div>
                       ) : 
@@ -280,7 +288,7 @@ export default function ProductPage() {
                     </td>
 
                     <td className="px-4 py-3.5 text-sm text-slate-600 dark:text-gray-300">{row.nama}</td>
-                    <td className="px-4 py-3.5 text-sm text-slate-600 dark:text-gray-300">{row.harga}</td>
+                    <td className="px-4 py-3.5 text-sm text-slate-600 dark:text-gray-300">{formatIDR.format(row.harga|| 0)}</td>
                    
                     <td className="px-4 py-3.5">
                       

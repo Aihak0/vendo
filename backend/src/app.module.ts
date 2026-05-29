@@ -24,6 +24,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { TaskModule } from './task/task.module';
 import { DatabaseModule } from './database/database.module';
 import { JwtModule } from '@nestjs/jwt';
+import { MinioService } from './minio/minio.service';
+import { MinioModule } from './minio/minio.module';
 
 @Module({
   imports: [ClientsModule.register([
@@ -53,9 +55,10 @@ import { JwtModule } from '@nestjs/jwt';
           expiresIn: (configService.get<string>('JWT_EXPIRES_IN') || '1d') as any
         },
       }),
-    })
+    }),
+    MinioModule
   ],  
   controllers: [AppController, AuthController, ProdukController, TransaksiController],
-  providers: [AppService, ProdukService, TransaksiService],
+  providers: [AppService, ProdukService, TransaksiService, MinioService],
 })
 export class AppModule {}

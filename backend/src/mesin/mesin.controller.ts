@@ -21,7 +21,7 @@ export class MesinController {
     }
  
     @Get("logs")
-    @UseGuards(AuthGuard, RolesGuard)
+    // @UseGuards(AuthGuard, RolesGuard)  
     async findAllLogs(@Query('page', new ParseIntPipe({ optional: true})) page: number, @Query('limit', new ParseIntPipe({ optional: true})) limit: number, @Query('search') search: string, @Query('filter') filter: string){
       return await this.mesinService.findAllLogs(page, limit, search, filter);
     }

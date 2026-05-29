@@ -6,7 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateUser } from "../../../services/api"; // Ganti ke updateProduct
 
 interface User {
-    user_id: string; // Tambahkan ID untuk keperluan update
+    id: string; // Tambahkan ID untuk keperluan update
     nama: string;
     email: string;
     role: "admin" | "teknisi";
@@ -33,13 +33,14 @@ export function ProdukEdit({ isOpen, onClose, dataEdit }: UserEditModalProps) {
     const [error, setError] = useState<Record<string, any>>({});
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-
+    const minIoHost = import.meta.env.VITE_MINIO_HOST;
+    const minIoPort = import.meta.env.VITE_MINIO_PORT;
     // --- Efek untuk Mengisi Data Awal (Edit Mode) ---
     useEffect(() => {
         if (dataEdit && isOpen) {
             setNama(dataEdit.nama);
             setEmail(dataEdit.email);
-            setPreviewUrl(dataEdit.urlPasfoto); // Tampilkan gambar lama sebagai preview
+            setPreviewUrl(`http://${minIoHost}:${minIoPort}/${dataEdit.urlPasfoto}`); // Tampilkan gambar lama sebagai preview
             setFile(null); // Reset file input karena belum ada file baru
             
         }
@@ -116,8 +117,8 @@ export function ProdukEdit({ isOpen, onClose, dataEdit }: UserEditModalProps) {
         mutationFn: (fd: FormData) => {
             // Kita gunakan optional chaining di sini, 
             // tapi kita pastikan user_id ada sebelum mutasi jalan
-            if (!dataEdit?.user_id) throw new Error("ID user tidak ditemukan");
-            return updateUser(dataEdit.user_id, fd);
+            if (!dataEdit?.id) throw new Error("ID user tidak ditemukan");
+            return updateUser(dataEdit.id, fd);
         },
         onSuccess: (s: any) => {
             queryClient.invalidateQueries({ queryKey: ['user'] });

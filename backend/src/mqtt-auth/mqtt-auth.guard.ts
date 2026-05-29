@@ -33,7 +33,7 @@ export class MqttAuthGuard implements CanActivate {
     
   try {
     const queryParams: any[] = [kode];
-    let query = `SELECT id, kode, status, teknisi_id FROM mesin WHERE kode = $1`;
+    let query = `SELECT id, kode, status FROM mesin WHERE kode = $1`;
 
     if (topic !== "mesin/status") {
       query += ` AND status = 'online'`;
@@ -43,11 +43,14 @@ export class MqttAuthGuard implements CanActivate {
     const mesin = await db.query(query, queryParams);
     
     const client = context.switchToRpc().getContext();
-    client.mesin = mesin.rows; 
+    client.mesin = mesin.rows[0]; 
+
+
 
     return true;
 
   } catch (error: any) {
+    console.log(error)
      this.client.emit(`transaksi/status`, {
           success: false,
           message: `Akses ditolak untuk mesin: ${kode}` ,

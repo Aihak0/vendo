@@ -10,7 +10,7 @@ export class PergerakanStockController {
     constructor(private readonly pergerakanStockService: PergerakanStockService){}
 
     @Get()
-    @UseGuards(AuthGuard, RolesGuard)    
+    // @UseGuards(AuthGuard, RolesGuard)    
     async findAll(@Query('page', ParseIntPipe) page: number = 1, @Query('limit', ParseIntPipe) limit: number = 10, @Query("sortAsc", new ParseBoolPipe({optional: true})) sortAsc: boolean, @Query("sortKey") sortKey: string, @Query('search') search: string, @Query("tipePerubahan") tipePerubahan: string){
         return await this.pergerakanStockService.findAll(page, limit, sortAsc, sortKey, search, tipePerubahan);
     }

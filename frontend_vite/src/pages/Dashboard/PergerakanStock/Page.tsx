@@ -71,7 +71,8 @@ export default function PergerakanStockPage() {
     queryKey: ['pergerakan-stock', page, limit, sortAsc, sortKey, searchTerm, activeTipePerubahan], 
     queryFn: () => getPergerakanStok( page, limit, sortAsc, sortKey, searchTerm, activeTipePerubahan),
   });
-
+    const minIoHost = import.meta.env.VITE_MINIO_HOST;
+    const minIoPort = import.meta.env.VITE_MINIO_PORT;
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault(); // Mencegah reload halaman
     setSearchTerm(inputValue); // Set trigger untuk React Query
@@ -237,7 +238,7 @@ export default function PergerakanStockPage() {
                     </td>
                   </tr>
                 )}
-              {pergerakanStock?.length === 0 ? (
+              {pergerakanStock?.data?.length === 0 ? (
                 <tr>
                   <td colSpan={columns.length + 2} className="text-center py-12 text-slate-400 text-sm">
                     Tidak ada data ditemukan
@@ -272,7 +273,7 @@ export default function PergerakanStockPage() {
                      </td>
                     <td className="px-4 py-3.5 text-sm text-slate-600 dark:text-gray-300 flex items-center gap-2">
                        {row.produk.img_url ? (
-                          <img src={row.produk.img_url} className='h-7' alt="" />
+                          <img src={`http://${minIoHost}:${minIoPort}/${row.produk.img_url}` } className='h-7' alt="" />
                       ) : 
                           <div className="w-8 h-7 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                             no image

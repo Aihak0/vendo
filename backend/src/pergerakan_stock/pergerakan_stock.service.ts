@@ -34,10 +34,17 @@ export class PergerakanStockService {
 
           const mainQuery = `
             SELECT 
-              ps.*,
-              p.nama as produk_nama,
-              p.harga as produk_harga,
-              p.img_url as produk_img_url
+              ps.*, 
+              CASE 
+                WHEN P.id IS NOT NULL THEN 
+                  jsonb_build_object(
+                      'id', P.id,
+                      'nama', P.nama,
+                      'harga', p.harga,
+                      'img_url', p.img_url
+                  )
+                  ELSE NULL 
+              END AS produk
             FROM pergerakan_stok ps
             LEFT JOIN produk p ON ps.produk_id = p.id
             ${whereClause}

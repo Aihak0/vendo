@@ -24,13 +24,13 @@ export default function TaskPage(){
      const alert = useAlert();   
     const { data, isLoading, error } = useQuery({
         // Gunakan profile?.user_id langsung di queryKey
-        queryKey: ['MyTask', profile?.user_id],
+        queryKey: ['MyTask', profile?.id],
         
         // Fungsi hanya akan dijalankan jika profile?.user_id ada
-        queryFn: () => getMyTask(profile.user_id, undefined),
+        queryFn: () => getMyTask(profile.id, undefined),
         
 
-        enabled: !!profile?.user_id, 
+        enabled: !!profile?.id, 
     });
 
 

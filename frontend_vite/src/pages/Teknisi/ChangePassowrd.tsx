@@ -28,8 +28,9 @@ export default function ChangePassword({isOpen}: {isOpen: boolean}){
                 alert.success(s.message);
             },
             onError: (err: any) => {
-                setError(err.response.data.message);
-                alert.error(err.response.data.message || "Gagal memperbarui User");
+                console.log(err);
+                setError(err.response);
+                alert.error(err.response || "Gagal memperbarui User");
             },
             onSettled: () => setLoading(false)
         });

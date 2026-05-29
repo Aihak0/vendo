@@ -5,10 +5,11 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
+import { MinioService } from 'src/minio/minio.service';
 
 @Injectable()
 export class UserService {
-    constructor(private databaseService: DatabaseService) {}
+    constructor(private databaseService: DatabaseService, private minioService: MinioService) {}
 
     async findAll(page?: number, limit?: number, sortAsc?: boolean, sortKey?: string, search?: string, role?: string) {
       const db = this.databaseService.getClient();
@@ -38,7 +39,7 @@ export class UserService {
         const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
         const mainQuery = `
-          SELECT * FROM user_profiles 
+          SELECT * FROM users 
           ${whereClause}
           ORDER BY ${sortColumn} ${orderDir}
           LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
@@ -48,11 +49,11 @@ export class UserService {
         const result = await db.query(mainQuery, queryParams);
         const data = result.rows;
 
-        const countQuery = `SELECT COUNT(*) as total FROM user_profiles ${whereClause}`;
+        const countQuery = `SELECT COUNT(*) as total FROM users ${whereClause}`;
         const countResult = await db.query(countQuery, whereConditions.length > 0 ? queryParams.slice(0, -2) : []);
         const count = parseInt(countResult.rows[0].total, 10);
 
-        const statsQuery = `SELECT role, COUNT(*) as count FROM user_profiles GROUP BY role`;
+        const statsQuery = `SELECT role, COUNT(*) as count FROM users GROUP BY role`;
         const statsResult = await db.query(statsQuery);
         const countAdmin = statsResult.rows.find(r => r.role === 'admin')?.count || 0;
         const countTeknisi = statsResult.rows.find(r => r.role === 'teknisi')?.count || 0;
@@ -103,29 +104,24 @@ export class UserService {
           throw new BadRequestException('Email sudah terdaftar');
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = await bcrypt.hash("Hako123", 10);
         const userId = crypto.randomUUID();
 
         const fileName = `${userId}-${pasFoto.originalname}`;
-        const uploadDir = path.join(__dirname, '..', '..', 'uploads', 'pasfoto'); 
-        const filePath = path.join(uploadDir, fileName);
+        await this.minioService.uploadFile(
+          'pasfoto', // bucket
+          fileName,
+          pasFoto.buffer,
+          pasFoto.mimetype,
+        );
 
-        await fs.mkdir(uploadDir, { recursive: true });
-        await fs.writeFile(filePath, pasFoto.buffer);
-
-        const urlPasfoto = `/uploads/pasfoto/${fileName}`;
+        const urlPasfoto = `pasfoto/${fileName}`;
 
         await db.query('BEGIN');
 
-        const insertUserQuery = `
-          INSERT INTO users (id, email, password) 
-          VALUES ($1, $2, $3)
-        `;
-        await db.query(insertUserQuery, [userId, email, hashedPassword]);
-
         const insertProfileQuery = `
-          INSERT INTO user_profiles (user_id, nama, role, email, is_default_password, url_pasfoto)
-          VALUES ($1, $2, $3, $4, $5, $6)
+          INSERT INTO users (id, nama, role, email, is_default_password, "urlPasfoto", password)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
         `;
         await db.query(insertProfileQuery, [
           userId,
@@ -133,7 +129,8 @@ export class UserService {
           role,
           email,
           true,
-          urlPasfoto
+          urlPasfoto,
+          hashedPassword
         ]);
 
         await db.query('COMMIT');
@@ -154,7 +151,7 @@ export class UserService {
       const { nama, email, role } = userData;
       
       try {
-        const checkQuery = `SELECT * FROM user_profiles WHERE user_id = $1`;
+        const checkQuery = `SELECT * FROM users WHERE id = $1`;
         const checkResult = await db.query(checkQuery, [id]);
 
         if (checkResult.rows.length === 0) {
@@ -166,13 +163,14 @@ export class UserService {
         if (pasFoto) {
           const fileExt = pasFoto.originalname.split('.').pop();
           const fileName = `${id}-${Date.now()}.${fileExt}`;
-          const uploadDir = path.join(__dirname, '..', '..', 'uploads', 'pasfoto');
-          const filePath = path.join(uploadDir, fileName);
+          await this.minioService.uploadFile(
+            'pasfoto', // bucket
+            fileName,
+            pasFoto.buffer,
+            pasFoto.mimetype,
+          );
 
-          await fs.mkdir(uploadDir, { recursive: true });
-          await fs.writeFile(filePath, pasFoto.buffer);
-
-          urlPasfoto = `/uploads/pasfoto/${fileName}`;
+          urlPasfoto = `pasfoto/${fileName}`;
         }
 
         const updates: string[] = [];
@@ -192,7 +190,7 @@ export class UserService {
         }
 
         if (urlPasfoto) {
-          updates.push(`url_pasfoto = $${paramIndex}`);
+          updates.push(`"urlPasfoto" = $${paramIndex}`);
           params.push(urlPasfoto);
           paramIndex++;
         }
@@ -201,9 +199,9 @@ export class UserService {
         params.push(id);
 
         const updateQuery = `
-          UPDATE user_profiles 
+          UPDATE users 
           SET ${updates.join(', ')}
-          WHERE user_id = $${paramIndex}
+          WHERE id = $${paramIndex}
           RETURNING *
         `;
 
@@ -226,20 +224,21 @@ export class UserService {
 
     async updaetProfileByOwn(accessToken: string, id: string, req: Request, nama?: string, password?: string, pasFoto?: Express.Multer.File) {
       const db = this.databaseService.getClient();
-
+      console.log("melebu kene?")
       try {
         let urlPasfoto: string | undefined;
 
         if (pasFoto) {
           const fileExt = pasFoto.originalname.split('.').pop();
           const fileName = `${id}-${Date.now()}.${fileExt}`;
-          const uploadDir = path.join(__dirname, '..', '..', 'uploads', 'pasfoto');
-          const filePath = path.join(uploadDir, fileName);
+          await this.minioService.uploadFile(
+            'pasfoto', // bucket
+            fileName,
+            pasFoto.buffer,
+            pasFoto.mimetype,
+          );
 
-          await fs.mkdir(uploadDir, { recursive: true });
-          await fs.writeFile(filePath, pasFoto.buffer);
-
-          urlPasfoto = `/uploads/pasfoto/${fileName}`;
+          urlPasfoto = `pasfoto/${fileName}`;
         }
 
         if (password) {
@@ -260,7 +259,7 @@ export class UserService {
           }
 
           if (urlPasfoto) {
-            updates.push(`url_pasfoto = $${paramIndex}`);
+            updates.push(`"urlPasfoto" = $${paramIndex}`);
             params.push(urlPasfoto);
             paramIndex++;
           }
@@ -273,9 +272,9 @@ export class UserService {
           params.push(id);
 
           const updateQuery = `
-            UPDATE user_profiles 
+            UPDATE users 
             SET ${updates.join(', ')}
-            WHERE user_id = $${paramIndex}
+            WHERE id = $${paramIndex}
           `;
 
           await db.query(updateQuery, params);
@@ -292,9 +291,9 @@ export class UserService {
       const db = this.databaseService.getClient();
       try {
         const query = `
-          UPDATE user_profiles 
+          UPDATE users 
           SET role = $1, updated_at = NOW()
-          WHERE user_id = $2
+          WHERE id = $2
           RETURNING *
         `;
         const result = await db.query(query, [changeTo, id]);
@@ -324,7 +323,7 @@ export class UserService {
 
         const updatePromises = body.map(user =>
           db.query(
-            `UPDATE user_profiles SET is_active = $1, updated_at = NOW() WHERE user_id = $2`,
+            `UPDATE users SET is_active = $1, updated_at = NOW() WHERE id = $2`,
             [!user.is_active, user.user_id]
           )
         );

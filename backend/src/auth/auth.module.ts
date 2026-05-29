@@ -2,24 +2,23 @@ import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { DatabaseModule } from 'src/database/database.module';
 import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtStrategy } from 'src/jwt/jwt.strategy';
 
 @Module({
   imports: [ DatabaseModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    // Gunakan registerAsync agar bisa inject ConfigService
     JwtModule.registerAsync({
-      imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => ({
-        // Tambahkan '!' di ujung untuk memastikan ke TS kalau nilai ini pasti ada/tidak undefined
-        secret: configService.get<string>('JWT_SECRET')!, 
-        signOptions: { 
-          // Tambahkan 'as any' di ujung untuk meredam error Type Mismatch
-          expiresIn: (configService.get<string>('JWT_EXPIRES_IN') || '1d') as any
-        },
+        secret: configService.get<string>('JWT_SECRET'), // <-- Ambil dari env
+        signOptions: { expiresIn: '1d', algorithm: 'HS256', },
       }),
-    })
+    }),
   ], 
-  providers: [AuthService],
+  providers: [AuthService, JwtStrategy],
   exports: [AuthService],
 })
 export class AuthModule {}

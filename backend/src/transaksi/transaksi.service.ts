@@ -80,7 +80,7 @@ export class TransaksiService {
       const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
       const mainQuery = `
-        SELECT * FROM transaksi
+        SELECT * FROM detailed_transaksi
         ${whereClause}
         ORDER BY ${sortColumn} ${orderDir}
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
@@ -179,7 +179,7 @@ export class TransaksiService {
     const countResult = await db.query(countQuery, [dataMesin.id]);
     const count = parseInt(countResult.rows[0].count, 10);
 
-    if (!data.total || !data.kode || !data.items) {
+    if (!data.total || !data.kode || !data.items || !dataMesin) {
       await this.sendMqtt(`generate/qr`, { success: false, message: 'Data Tidak Lengkap.', data: {} }, 0);
       return;
     }
@@ -209,28 +209,23 @@ export class TransaksiService {
       if (result.fraud_status !== 'accept') {
         throw { source: 'midtrans', message: 'Transaksi terdeteksi penipuan.' };
       }
-
-      // Simpan ke PostgreSQL
-      await db.query('BEGIN');
-
-      const insertQuery = `
-        INSERT INTO transaksi (
-          id, order_id, mesin_id, status, status_pembayaran, total, items, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-        RETURNING *
+      
+      const query = `
+        SELECT * FROM tambah_transaksi_dengan_items($1, $2, $3, $4, $5, $6, $7::jsonb)
       `;
 
-      await db.query(insertQuery, [
+      const values = [
         result.transaction_id,
         result.order_id,
         dataMesin.id,
         'pending',
         'pending',
-        result.gross_amount,
+        Number(result.gross_amount),
         JSON.stringify(data.items)
-      ]);
+      ];
+      const res = await db.query(query, values);
 
-      await db.query('COMMIT');
+      console.log(JSON.stringify(res.rows, null, 2));
 
       const payload = {
         success: true,
@@ -249,19 +244,48 @@ export class TransaksiService {
   async updateStatusTransaksi(data: any) {
     const db = this.databaseService.getClient();
 
+    const { order_id: orderId, transaction_id: transactionId, transaction_status: transactionStatus, fraud_status: fraudStatus } = data;
+
     try {
+      if (transactionStatus === 'pending') {
+        return { success: true, message: 'Status masih pending, abaikan.' };
+      }
+
+      if (fraudStatus && fraudStatus !== 'accept') {
+          this.client.emit(`transaksi/status`, {
+            success: false,
+            message: "Transaksi terdeteksi fraud.",
+            order_id: orderId,
+            statusTransaksi: 'cancel'
+          });
+
+        return;
+      }
+
+      let statusTransaksi: string;
+      if (transactionStatus === 'settlement' || transactionStatus === 'capture') {
+        statusTransaksi = "process";
+      } else if (['expire', 'cancel', 'deny', 'refund'].includes(transactionStatus)) {
+        statusTransaksi = "cancel";
+      } else {
+        throw new BadRequestException("status tidak relevan");
+      }
+
+
       const updateQuery = `
         UPDATE transaksi
         SET status_pembayaran = $1, status = $2, updated_at = NOW()
-        WHERE order_id = $3
+        WHERE order_id = $3 AND id = $4
         RETURNING *
       `;
 
-      const result = await db.query(updateQuery, [data.status_pembayaran, data.status, data.order_id]);
+      const result = await db.query(updateQuery, [transactionStatus, statusTransaksi, orderId, transactionId]);
 
-      if (result.rows.length === 0) {
+      if (!result.rows || result.rows.length === 0) {
         throw new InternalServerErrorException('Transaksi tidak ditemukan');
       }
+
+      await this.sendMqtt(`transaksi/status`, { success: true, message: this.getFriendlyMessage(transactionStatus), order_id: orderId, statusTransaksi: transactionStatus }, 0);
 
       return { success: true, data: result.rows[0], code: 200 };
     } catch (err: any) {
@@ -273,32 +297,121 @@ export class TransaksiService {
     const db = this.databaseService.getClient();
 
     try {
-      await db.query('BEGIN');
-
-      const updateQuery = `
-        UPDATE transaksi
-        SET status = 'complete', updated_at = NOW()
-        WHERE order_id = $1
-        RETURNING *
-      `;
-
-      const result = await db.query(updateQuery, [dataPayload.order_id]);
-
-      if (result.rows.length === 0) {
-        throw new InternalServerErrorException('Transaksi tidak ditemukan');
+      if(!dataPayload || !dataPayload.order_id || !dataPayload.status) {
+        await this.sendMqtt(`transaksi/status`, { success: false, message: "Data Tidak Lengkap.", order_id: dataPayload?.order_id || null, statusTransaksi: 'failed'}, 0);
+        return;
+      }
+      if(dataPayload.status != 'complete'){
+        await this.sendMqtt(`transaksi/status`, { success: false, message: "Permintaan tidak dapat dilanjutkan.", order_id: dataPayload?.order_id || null, statusTransaksi: 'failed'}, 0);
+        return;
       }
 
-      await db.query('COMMIT');
+      const queryDataOldTrans = `
+        SELECT * FROM transaksi 
+        WHERE order_id = $1
+      `;
 
-      await this.sendMqtt(`transaksi/${dataMesin.id}`, {
+      const resultDataOldTrans = await db.query(queryDataOldTrans, [dataPayload.order_id]);
+
+
+      if(!resultDataOldTrans || resultDataOldTrans.rows.length === 0){
+        await this.sendMqtt(`transaksi/status`, { success: false, message: "Order tidak ditemukan.", order_id: dataPayload.order_id, statusTransaksi: 'failed'}, 0);
+        return;
+      }
+
+      const dataOldTrans = resultDataOldTrans.rows[0];
+
+      if(dataOldTrans.status_pembayaran != 'settlement' || dataOldTrans.status != 'process'){
+        await this.sendMqtt(`transaksi/status`, { success: false, message: "Status Tidak bisa diubah.", order_id: dataPayload.order_id, statusTransaksi: 'failed'}, 0);
+        return;
+      }
+
+      const queryCompleteTransaction = `
+      SELECT * FROM complete_transaction($1, $2)
+      `;
+
+      const resultCompleteTransaction = await db.query(queryCompleteTransaction, [dataPayload.order_id, dataMesin.id]);
+
+      if(!resultCompleteTransaction || resultCompleteTransaction.rows.length === 0){
+        throw new InternalServerErrorException("Gagal menyelesaikan order,");
+      }
+
+
+      const { rows: datainventaris } = await db.query(
+        `SELECT kode, id, stock 
+        FROM slot 
+        WHERE stock < 5 
+        AND mesin_id = $1`,
+        [dataMesin.id]
+      );
+
+      if(!datainventaris || datainventaris.length === 0){
+        throw new InternalServerErrorException("Gagal mengambil data inventaris");
+      }
+
+      if(datainventaris.length > 0 ){
+        // ✅ Benar & aman
+        const { rows: existingTask } = await db.query(
+          `SELECT id FROM task
+          WHERE mesin_id = $1 
+          AND tipe_tugas = 'restock' 
+          AND status = ANY($2::status_tugas[])`,
+          [dataMesin.id, ["pending", "assigned", "in_progress"]]
+        );
+
+        
+        if (!existingTask || existingTask.length === 0) {
+          const lowStockItem = datainventaris.length === 1 ? datainventaris[0].kode : "beberapa slot";
+          const date = new Date();
+          date.setHours(23, 59, 59, 999);
+
+          await db.query(`INSERT INTO task (
+            judul, 
+            status,
+            prioritas,
+            dibuat_oleh,
+            mesin_id,
+            tipe_tugas
+            ) VALUES (
+              $1,
+              'pending',
+              'medium',
+              'system',
+              $2,
+              'restock' 
+            )`
+          , [`Restock ${dataMesin.nama} pada ${lowStockItem}`, dataMesin.id])
+        }
+      }
+
+      const payload = {
         success: true,
-        message: 'Pesanan Selesai',
-        status: 'complete'
-      });
+        message: "Berhasil menyelesaikan transaksi.",
+        order_id: dataPayload.order_id,
+        statusTransaksi: 'complete'
+      };
+
+      await db.query(`
+        INSERT INTO log_mesin (
+          mesin_id,
+          tipe,
+          payload
+        ) VALUES (
+          $1, 
+          $2, 
+          $3 
+        )`, [dataMesin?.id, dataPayload.status, {
+            kode: dataMesin.kode,
+            message: `Mesin menyelesaikan order ${dataPayload.order_id}`,
+            waktu: new Date(Date.now()).toISOString(),
+          }])
+
+      await this.sendMqtt(`transaksi/status`, payload, 0);
 
       return { success: true, message: 'Order berhasil diselesaikan', code: 200 };
     } catch (err: any) {
-      await db.query('ROLLBACK');
+      console.log(err)
+      // await db.query('ROLLBACK');
       throw err;
     }
   }

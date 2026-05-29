@@ -43,28 +43,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const alert = useAlert();
 
   const fetchProfile = async () => {
-    try {
-      const token = localStorage.getItem('access_token');
+  try {
+    const token = localStorage.getItem('access_token');
+    // Jika token tidak ada atau isinya aneh, stop.
+    if (!token || token === 'undefined' || token === 'null') return;
 
-      const response = await axios.get(
-        `${API_URL}/user/profile`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+    const response = await axios.get(`${API_URL}/user/profile`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-      setProfile(response.data);
-
-      localStorage.setItem(
-        'user_profile',
-        JSON.stringify(response.data)
-      );
-    } catch (error) {
-      console.error(error);
-    }
-  };
+    setProfile(response.data);
+    localStorage.setItem('user_profile', JSON.stringify(response.data));
+  } catch (error) {
+    console.error("Gagal memuat profil:", error);
+    // Lempar error ke atas agar fungsi yang memanggil tahu kalau ini gagal
+    throw error; 
+  }
+};
 
   const refreshProfile = async () => {
     await fetchProfile();
@@ -74,33 +69,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const token = localStorage.getItem('access_token');
 
-      if (!token) {
-        setLoading(false);
+      // Pengaman ekstra: cek jika token kosong, string "null", atau "undefined"
+      if (!token || token === 'undefined' || token === 'null') {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user_profile');
+        setUser(null);
+        setProfile(null);
+        setLoading(false); // Paksa matikan loading
         return;
       }
 
-      const response = await axios.get(
-        `${API_URL}/auth/me`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await axios.get(`${API_URL}/user/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       setUser(response.data);
-
       await fetchProfile();
     } catch (error) {
+      console.error("Error saat dapatkan user:", error);
       localStorage.removeItem('access_token');
       localStorage.removeItem('user_profile');
       setUser(null);
       setProfile(null);
     } finally {
-      setLoading(false);
+      // Apapun yang terjadi, sukses atau gagal, LOADING HARUS FALSE!
+      setLoading(false); 
     }
   };
-
   useEffect(() => {
     getCurrentUser();
   }, []);
@@ -148,7 +143,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setProfile(null);
 
       alert.success('Anda telah berhasil keluar');
+      console.log("iki user ta => ", user);
     } catch (error: any) {
+      
       alert.error(error.message);
     } finally {
       setIsLoggingOut(false);

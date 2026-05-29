@@ -17,12 +17,12 @@ export class TransaksiController {
     async handlePaymentReq(@Payload() payload: any, @Ctx() context: MqttContext){
         const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
         const dataMesin = (context as any).mesin;
-        
+            console.log("ahhahahhah",dataMesin)
         await this.transaksiService.paymentReq(data, dataMesin).catch(err => {
             this.client.emit(`generate/qr`, {
                 success: false,
                 message: err.message || "Error Payment Req" ,
-                data: {}
+                data: {} 
 
             });
         });
@@ -93,7 +93,7 @@ export class TransaksiController {
 
     
     @Get()
-    @UseGuards(AuthGuard, RolesGuard)
+    // @UseGuards(AuthGuard, RolesGuard)
     async findAll(@Query('page', ParseIntPipe) page: number = 1, @Query('limit', ParseIntPipe) limit: number = 10, @Query("sortAsc", new ParseBoolPipe({optional: true})) sortAsc: boolean, @Query("sortKey") sortKey: string, @Query('search') search: string,  @Query('statusTransaksi') statusTransaksi: string,  @Query('statusPembayaran') statusPembayaran: string){
         return await this.transaksiService.findAll(page, limit, sortAsc, sortKey, search, statusTransaksi, statusPembayaran);
     }

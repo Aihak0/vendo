@@ -28,57 +28,96 @@ export class MesinService {
     async findAll(page: number, limit: number, sortAsc: boolean, sortKey?: string, search?: string, status?: string) {
         const db = this.databaseService.getClient();
         try {
-          const { offset } = this.databaseService.getPaginationOffset(page, limit);
+          
           const orderDir = sortAsc ? 'ASC' : 'DESC';
           const sortColumn = sortKey || 'created_at';
-
+          
           let whereConditions: string[] = [];
           let queryParams: any[] = [];
           let paramIndex = 1;
+          
+          const hasPagination =
+            limit !== undefined &&
+            limit !== null &&
+            !isNaN(Number(limit));
 
+          let paginationQuery = '';
+
+          if (hasPagination) {
+            const limitNum = Number(limit);
+            const pageNum = Number(page) || 1;
+            const offset = (pageNum - 1) * limitNum;
+
+            paginationQuery = `
+              LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+            `;
+
+            queryParams.push(limitNum, offset);
+          }
           if (status && status !== 'all') {
             whereConditions.push(`m.status = $${paramIndex}`);
             queryParams.push(status);
             paramIndex++;
           }
-
+          
           if (search) {
             whereConditions.push(`m.nama ILIKE $${paramIndex}`);
             queryParams.push(`%${search}%`);
             paramIndex++;
           }
-
+          
           const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
-
+          
           const mainQuery = `
             SELECT 
               m.*,
-              json_agg(DISTINCT jsonb_build_object('id', s.id, 'kode', s.kode, 'produk_id', s.produk_id)) as slots,
-              json_agg(DISTINCT jsonb_build_object('teknisi_id', mt.teknisi_id, 'nama', up.nama, 'email', up.email, 'urlPasfoto', up.url_pasfoto)) as teknisi
+              COALESCE(
+                json_agg(
+                  DISTINCT jsonb_build_object(
+                    'id', s.id,
+                    'kode', s.kode,
+                    'produk_id', s.produk_id,
+                    'stock', s.stock,
+                    'metadata', s.metadata,
+                    'max_stock', s.max_stock
+                  )
+                ) FILTER (WHERE s.id IS NOT NULL),
+                '[]'
+              ) as slots,
+              COALESCE(
+                json_agg(
+                  DISTINCT jsonb_build_object(
+                    'teknisi_id', mt.teknisi_id,
+                    'nama', up.username,
+                    'email', up.email,
+                    'urlPasfoto', up."urlPasfoto"
+                  )
+                ) FILTER (WHERE mt.teknisi_id IS NOT NULL),
+                '[]'
+              ) as teknisi
             FROM mesin m
             LEFT JOIN slot s ON m.id = s.mesin_id
             LEFT JOIN mesin_teknisi mt ON m.id = mt.mesin_id
-            LEFT JOIN user_profiles up ON mt.teknisi_id = up.user_id
+            LEFT JOIN users up ON mt.teknisi_id = up.id
             ${whereClause}
             GROUP BY m.id
             ORDER BY m.${sortColumn} ${orderDir}
-            LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+            ${paginationQuery}
           `;
-          queryParams.push(limit, offset);
-
+        
           const result = await db.query(mainQuery, queryParams);
           const data = result.rows;
-
+          
           const countQuery = `SELECT COUNT(*) as total FROM mesin m ${whereClause}`;
           const countResult = await db.query(countQuery, whereConditions.length > 0 ? queryParams.slice(0, -2) : []);
           const count = parseInt(countResult.rows[0].total, 10);
-
+          
           const statsQuery = `SELECT status, COUNT(*) as count FROM mesin GROUP BY status`;
           const statsResult = await db.query(statsQuery);
           const countOnline = statsResult.rows.find(r => r.status === 'online')?.count || 0;
           const countOffline = statsResult.rows.find(r => r.status === 'offline')?.count || 0;
           const countMaintenance = statsResult.rows.find(r => r.status === 'maintenance')?.count || 0;
-
+          
           return {
             success: true,
             code: 200,
@@ -94,6 +133,7 @@ export class MesinService {
             }
           };
         } catch (err: any) {
+          console.log("err;ror mesin", err);
           throw new InternalServerErrorException(err.message || 'Gagal mengambil data mesin');
         }
     }
@@ -104,7 +144,32 @@ export class MesinService {
 
       try {
         const query = `
-          SELECT m.*, json_agg(jsonb_build_object('id', s.id, 'kode', s.kode, 'produk_id', s.produk_id, 'produk_nama', p.nama, 'produk_img', p.img_url)) as slots
+          SELECT m.*, 
+            COALESCE(
+                json_agg(
+                  DISTINCT jsonb_build_object(
+                    'id', s.id,
+                    'kode', s.kode,
+                    'produk_id', s.produk_id,
+                    'stock', s.stock,
+                    'metadata', s.metadata,
+                    'max_stock', s.max_stock,
+                    
+                  
+                    'produk', CASE 
+                      WHEN p.id IS NOT NULL THEN 
+                        jsonb_build_object(
+                          'id', p.id,
+                          'nama', p.nama, 
+                          'harga', p.harga,
+                          'img_url', p.img_url
+                        )
+                      ELSE NULL 
+                    END
+                  )
+                ) FILTER (WHERE s.id IS NOT NULL),
+                '[]'
+              ) as slots
           FROM mesin m
           LEFT JOIN mesin_teknisi mt ON m.id = mt.mesin_id
           LEFT JOIN slot s ON m.id = s.mesin_id
@@ -112,7 +177,6 @@ export class MesinService {
           WHERE mt.teknisi_id = $1
           GROUP BY m.id
         `;
-        
         const result = await db.query(query, [teknisi_id]);
         return result.rows;
       } catch (err: any) {
@@ -143,7 +207,16 @@ export class MesinService {
         const whereClause = whereConditions.join(' AND ');
 
         const query = `
-          SELECT lm.*
+          SELECT lm.*,
+           CASE 
+                WHEN m.id IS NOT NULL THEN 
+                jsonb_build_object(
+                    'id', m.id,
+                    'nama', m.nama,
+                    'status', m.status
+                )
+                ELSE NULL 
+            END AS mesin
           FROM log_mesin lm
           INNER JOIN mesin m ON lm.mesin_id = m.id
           INNER JOIN mesin_teknisi mt ON m.id = mt.mesin_id
@@ -183,7 +256,16 @@ export class MesinService {
         const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
         const mainQuery = `
-          SELECT lm.*, m.nama as mesin_nama
+          SELECT lm.*,
+          CASE 
+                WHEN m.id IS NOT NULL THEN 
+                jsonb_build_object(
+                    'id', m.id,
+                    'nama', m.nama,
+                    'status', m.status
+                )
+                ELSE NULL 
+            END AS mesin
           FROM log_mesin lm
           INNER JOIN mesin m ON lm.mesin_id = m.id
           ${whereClause}
@@ -233,108 +315,382 @@ export class MesinService {
     async add(body: any) {
       const db = this.databaseService.getClient();
       try {
-        const { nama, rows, total_slot, latitude, longitude, desa, kecamatan, kabupaten, provinsi, negara, kode_pos, slots, teknisi } = body;
+        const {
+          nama,
+          rows,
+          total_slot,
+          latitude,
+          longitude,
+          desa,
+          kecamatan,
+          kabupaten,
+          provinsi,
+          negara,
+          kode_pos,
+          slots,
+          teknisi,
+        } = body;
 
-        await db.query('BEGIN');
-
-        // Insert mesin
-        const insertMesinQuery = `
-          INSERT INTO mesin (nama, rows, total_slot, latitude, longitude, desa, kecamatan, kabupaten, provinsi, negara, kode_pos, status, created_at)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'online', NOW())
-          RETURNING id
+        const query = `
+          SELECT * FROM tambah_mesin_dengan_slot(
+            $1, $2, $3, $4, $5,
+            $6, $7, $8, $9, $10,
+            $11, $12, $13
+          )
         `;
 
-        const mesinResult = await db.query(insertMesinQuery, [
-          nama, rows, total_slot, latitude, longitude, desa, kecamatan, kabupaten, provinsi, negara, kode_pos
-        ]);
+        const values = [
+          nama,
+          rows,
+          total_slot,
+          latitude,
+          longitude,
+          desa,
+          kecamatan,
+          kabupaten,
+          provinsi,
+          negara,
+          kode_pos,
+          JSON.stringify(teknisi),
+          JSON.stringify(slots),
+        ];
 
-        if (mesinResult.rows.length === 0) {
-          throw new InternalServerErrorException('Gagal menambah mesin');
+        const result = await db.query(query, values);
+
+        const dataInsert = result.rows[0].tambah_mesin_dengan_slot
+
+        console.log(result)
+        if (!dataInsert.success) {
+          throw new InternalServerErrorException(dataInsert.error);
         }
 
-        const mesinId = mesinResult.rows[0].id;
-
-        // Insert slots
-        if (slots && Array.isArray(slots)) {
-          for (const slotData of slots) {
-            const insertSlotQuery = `
-              INSERT INTO slot (mesin_id, kode, produk_id, created_at)
-              VALUES ($1, $2, $3, NOW())
-            `;
-            await db.query(insertSlotQuery, [mesinId, slotData.kode, slotData.produk_id]);
-          }
-        }
-
-        // Insert teknisi
-        if (teknisi && Array.isArray(teknisi)) {
-          for (const tek of teknisi) {
-            const insertTeknisiQuery = `
-              INSERT INTO mesin_teknisi (mesin_id, teknisi_id, created_at)
-              VALUES ($1, $2, NOW())
-            `;
-            await db.query(insertTeknisiQuery, [mesinId, tek]);
-          }
-        }
-
-        await db.query('COMMIT');
-
-        return { success: true, message: 'Berhasil menambah data mesin', code: 200 };
+        return {
+          success: true,
+          message: 'Berhasil menambah data mesin',
+          code: 200,
+        };
       } catch (err: any) {
-        await db.query('ROLLBACK');
-        throw err;
+        console.log(err);
+        throw err
       }
+
     }
 
     async update(id: string, body: any) {
       const db = this.databaseService.getClient();
+      console.log(body);
 
       try {
-        await db.query('BEGIN');
+        // =========================
+        // AMBIL DATA LAMA
+        // =========================
 
-        const { nama, rows, total_slot, latitude, longitude, desa, kecamatan, kabupaten, provinsi, negara, kode_pos, slots, teknisi } = body;
+        const oldMesinResult = await db.query(
+          `SELECT * FROM mesin WHERE id = $1 LIMIT 1`,
+          [id]
+        );
 
-        const updateMesinQuery = `
-          UPDATE mesin
-          SET nama = $1, rows = $2, total_slot = $3, latitude = $4, longitude = $5, 
-              desa = $6, kecamatan = $7, kabupaten = $8, provinsi = $9, negara = $10, kode_pos = $11, updated_at = NOW()
-          WHERE id = $12
-        `;
+        const oldSlotsResult = await db.query(
+          `SELECT * FROM slot WHERE mesin_id = $1`,
+          [id]
+        );
 
-        await db.query(updateMesinQuery, [
-          nama, rows, total_slot, latitude, longitude, desa, kecamatan, kabupaten, provinsi, negara, kode_pos, id
-        ]);
+        const oldTeknisiResult = await db.query(
+          `
+          SELECT 
+            mt.*,
+            json_build_object(
+              'nama', up.nama,
+              'email', up.email,
+              'urlPasfoto', up."urlPasfoto"
+            ) as users
+          FROM mesin_teknisi mt
+          LEFT JOIN users up
+            ON up.id = mt.teknisi_id
+          WHERE mt.mesin_id = $1
+          `,
+          [id]
+        );
 
-        // Delete old slots dan insert new ones
-        await db.query(`DELETE FROM slot WHERE mesin_id = $1`, [id]);
+        const oldMesin = oldMesinResult.rows[0];
+        const oldSlots = oldSlotsResult.rows;
+        const oldTeknisi = oldTeknisiResult.rows;
+
+        let itemToUpsert: any[] = [];
+        let TeknisiToUpsert: any[] = [];
+
+        // =========================
+        // CEK SLOT YANG BERUBAH
+        // =========================
+        if(body.slots){
+
+          body.slots.forEach((s: any) => {
+            s.col.forEach((item: any) => {
+              const oldSlot = oldSlots.find(
+                (old: any) => old.kode === item.kode
+              );
+              
+              const isChanged =
+              !oldSlot ||
+              oldSlot.produk_id !== item.produk_id ||
+              oldSlot.stock !== item.stock ||
+              oldSlot.metadata?.span !== item.span ||
+              JSON.stringify(oldSlot.metadata?.gabungan) !==
+              JSON.stringify(item.gabungan);
+              
+              if (isChanged) {
+                itemToUpsert.push({
+                  kode: item.kode,
+                  mesin_id: id,
+                  produk_id: item.produk_id || null,
+                  stock: item.stock || 0,
+                  metadata: {
+                    span: item.span,
+                    gabungan: item.gabungan,
+                    row_number: s.row_number,
+                    col_number: item.col_number,
+                  },
+                });
+              }
+            });
+          });
+        }
+
+        // =========================
+        // CEK TEKNISI BARU
+        // =========================
+        if(body.teknisi){
+
+          body.teknisi.forEach((item: any) => {
+            const old = oldTeknisi.find(
+              (old: any) => old.teknisi_id === item.id
+            );
+            
+            if (!old) {
+              TeknisiToUpsert.push({
+                mesin_id: id,
+                teknisi_id: item.id,
+              });
+            }
+          });
+
+        }
+        // =========================
+        // DATA YANG DIHAPUS
+        // =========================
         
-        if (slots && Array.isArray(slots)) {
-          for (const slotData of slots) {
-            const insertSlotQuery = `
-              INSERT INTO slot (mesin_id, kode, produk_id, created_at)
-              VALUES ($1, $2, $3, NOW())
-            `;
-            await db.query(insertSlotQuery, [id, slotData.kode, slotData.produk_id]);
+        const incomingKodes = body.slots.flatMap((s: any) =>
+          s.col.map((item: any) => item.kode)
+        );
+
+        const itemsToDelete =
+          oldSlots.filter(
+            (old: any) => !incomingKodes.includes(old.kode)
+          ) || [];
+        
+        let TeknisiDelete :any[]= [];
+        if(body.teknisi){
+          TeknisiDelete =
+            oldTeknisi.filter(
+              (old: any) =>
+                !body.teknisi
+                  .map((t: any) => t.id)
+                  .includes(old.teknisi_id)
+            ) || [];
+
+        }
+
+        // =========================
+        // UPSERT SLOT
+        // =========================
+
+        if (itemToUpsert.length > 0) {
+          for (const item of itemToUpsert) {
+            await db.query(
+              `
+              INSERT INTO slot (
+                kode,
+                mesin_id,
+                produk_id,
+                stock,
+                metadata
+              )
+              VALUES ($1, $2, $3, $4, $5)
+              ON CONFLICT (mesin_id, kode)
+              DO UPDATE SET
+                produk_id = EXCLUDED.produk_id,
+                stock = EXCLUDED.stock,
+                metadata = EXCLUDED.metadata,
+                updated_at = NOW()
+              `,
+              [
+                item.kode,
+                item.mesin_id,
+                item.produk_id,
+                item.stock,
+                JSON.stringify(item.metadata),
+              ]
+            );
           }
         }
 
-        // Delete old teknisi dan insert new ones
-        await db.query(`DELETE FROM mesin_teknisi WHERE mesin_id = $1`, [id]);
-        
-        if (teknisi && Array.isArray(teknisi)) {
-          for (const tek of teknisi) {
-            const insertTeknisiQuery = `
-              INSERT INTO mesin_teknisi (mesin_id, teknisi_id, created_at)
-              VALUES ($1, $2, NOW())
-            `;
-            await db.query(insertTeknisiQuery, [id, tek]);
+        // =========================
+        // UPSERT TEKNISI
+        // =========================
+
+        if (TeknisiToUpsert.length > 0) {
+          for (const item of TeknisiToUpsert) {
+            await db.query(
+              `
+              INSERT INTO mesin_teknisi (
+                mesin_id,
+                teknisi_id
+              )
+              VALUES ($1, $2)
+              ON CONFLICT (mesin_id, teknisi_id)
+              DO NOTHING
+              `,
+              [item.mesin_id, item.teknisi_id]
+            );
           }
         }
 
-        await db.query('COMMIT');
+        // =========================
+        // DELETE SLOT
+        // =========================
 
-        return { success: true, message: 'Berhasil memperbarui data mesin', code: 200 };
+        if (itemsToDelete.length > 0) {
+          const deleteIds = itemsToDelete.map(
+            (item: any) => item.id
+          );
+
+          await db.query(
+            `DELETE FROM slot WHERE id = ANY($1::uuid[])`,
+            [deleteIds]
+          );
+        }
+
+        // =========================
+        // DELETE TEKNISI
+        // =========================
+
+        if (TeknisiDelete.length > 0) {
+          const deleteIds = TeknisiDelete.map(
+            (item: any) => item.id
+          );
+
+          await db.query(
+            `DELETE FROM mesin_teknisi WHERE id = ANY($1::uuid[])`,
+            [deleteIds]
+          );
+        }
+
+        // =========================
+        // UPDATE MESIN
+        // =========================
+
+        const isMesinChanged =
+          (body.nama !== undefined &&
+            body.nama !== oldMesin.nama) ||
+          
+          (body.latitude !== undefined &&
+            body.latitude !== oldMesin.latitude) ||
+          (body.longitude !== undefined &&
+            body.longitude !== oldMesin.longitude) ||
+          (body.desa !== undefined &&
+            body.desa !== oldMesin.desa) ||
+          (body.kecamatan !== undefined &&
+            body.kecamatan !== oldMesin.kecamatan) ||
+          (body.kabupaten !== undefined &&
+            body.kabupaten !== oldMesin.kabupaten) ||
+          (body.negara !== undefined &&
+            body.negara !== oldMesin.negara) ||
+          (body.provinsi !== undefined &&
+            body.provinsi !== oldMesin.provinsi) ||
+          (body.kode_pos !== undefined &&
+            body.kode_pos !== oldMesin.kode_pos) ||
+          (body.row_slot !== undefined &&
+            body.row_slot !== oldMesin.row_slot) ||
+          (body.total_slot !== undefined &&
+            body.total_slot !== oldMesin.total_slot);
+
+        let dataUpdateMesin: any = null;
+
+        if (isMesinChanged) {
+          const updateResult = await db.query(
+            `
+            UPDATE mesin
+            SET
+              nama = $1,
+              row_slots = $2,
+              total_slot = $3,
+              latitude = $4,
+              longitude = $5,
+              desa = $6,
+              kecamatan = $7,
+              kabupaten = $8,
+              provinsi = $9,
+              negara = $10,
+              kode_pos = $11,
+              updated_at = NOW()
+            WHERE id = $12
+            RETURNING *
+            `,
+            [
+              body.nama,
+              body.row_slot,
+              body.total_slot,
+              body.latitude,
+              body.longitude,
+              body.desa,
+              body.kecamatan,
+              body.kabupaten,
+              body.provinsi,
+              body.negara,
+              body.kode_pos,
+              id,
+            ]
+          );
+
+          dataUpdateMesin = updateResult.rows[0];
+
+          // ambil slot + produk
+          const slotResult = await db.query(
+            `
+            SELECT
+              s.produk_id,
+              s.kode,
+              s.stock,
+              s.metadata,
+              json_build_object(
+                'nama', p.nama,
+                'harga', p.harga,
+                'img_url', p.img_url
+              ) as produk
+            FROM slot s
+            LEFT JOIN produk p
+              ON p.id = s.produk_id
+            WHERE s.mesin_id = $1
+            `,
+            [id]
+          );
+
+          dataUpdateMesin.slot = slotResult.rows;
+
+          await this.sendMqtt(
+            `mesin/${dataUpdateMesin.kode}/detail`,
+            { dataUpdateMesin },
+            1
+          );
+        }
+
+        return {
+          success: true,
+          message: "Berhasil mengubah data",
+          code: 200,
+        };
       } catch (err: any) {
-        await db.query('ROLLBACK');
+        console.log("Error nyah:", err);
         throw err;
       }
     }
@@ -449,11 +805,10 @@ export class MesinService {
         const d_items = dataSlot;
         const d_mesin_id = idMesin;
 
-        await db.query(
-          `SELECT * FROM bulk_add_stock($1, $2)`, 
-          [d_items, d_mesin_id]
-        );
-      
+       await db.query(
+        `SELECT * FROM bulk_add_stock($1, $2)`, 
+        [JSON.stringify(d_items), d_mesin_id] // <--- Bungkus dengan JSON.stringify()
+      );
     
       
         return { success: true, message: "Berhasil mengubah stock", code: 200};

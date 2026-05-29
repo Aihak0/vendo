@@ -27,6 +27,20 @@ contoh :
 		}]	
 }
 
+{
+	"total": 12,
+	"kode": "dc89ddb5-e1ee-43e1-a10a-1d6cfbc0706c",
+	"items": [{
+			"slot_id": "55af4a8a-a984-45d5-9f9c-4e47a2a2dcfa",
+			"kode_slot": "A1",
+			"produk_id": "4da34cd8-dc98-4c3e-a2b7-3afdfa2ac8fb",
+			"nama_produk": "mbg",
+			"qty": 1,
+			"subtotal": 12,
+			"harga": 12
+		}]	
+}
+
 data generate qr topiknya gajelas QoS 1: 
 {
 	"pattern":"generate/qr",

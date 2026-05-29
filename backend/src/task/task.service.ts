@@ -46,7 +46,7 @@ export class TaskService {
                   'user_id', up.user_id,
                   'nama', up.nama,
                   'email', up.email,
-                  'urlPasfoto', up.urlPasfoto
+                  'urlPasfoto', up."urlPasfoto"
                 )) FILTER (WHERE up.user_id IS NOT NULL), '[]'::json) as ditugaskan_ke
               FROM task t
               LEFT JOIN mesin m ON t.mesin_id = m.id
@@ -110,19 +110,29 @@ export class TaskService {
             }
 
             const query = `
-              SELECT 
-                t.*,
-                m.id as mesin_id,
-                m.nama as mesin_nama,
-                m.status as mesin_status
-              FROM task_teknisi tt
-              INNER JOIN task t ON tt.task_id = t.id
-              LEFT JOIN mesin m ON t.mesin_id = m.id
-              WHERE tt.teknisi_id = $1
-              ${prioritasCondition}
-              ORDER BY t.created_at DESC
-            `;
-
+                SELECT 
+                    t.*,
+                    mesin_agg.mesin
+                FROM task_teknisi tt
+                INNER JOIN task t ON tt.task_id = t.id
+                LEFT JOIN LATERAL (
+                    SELECT 
+                    CASE 
+                        WHEN m.id IS NOT NULL THEN 
+                        jsonb_build_object(
+                            'id', m.id,
+                            'nama', m.nama,
+                            'status', m.status
+                        )
+                        ELSE NULL 
+                    END AS mesin
+                    FROM mesin m
+                    WHERE t.mesin_id = m.id
+                ) mesin_agg ON TRUE
+                WHERE tt.teknisi_id = $1
+                ${prioritasCondition}
+                ORDER BY t.created_at DESC
+                `;
             const result = await db.query(query, queryParams);
             const data = result.rows;
 

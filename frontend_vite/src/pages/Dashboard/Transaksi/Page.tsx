@@ -41,6 +41,11 @@ export default function TransaksiPage() {
   const [selected, setSelected] = useState<any[]>([]);
   const [ openModalDetail, setOpenModalDetail] = useState(false);
   const [ dataDetail, setDataDetail] = useState<any>(null);
+
+  const formatIDR = new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+  });
   
   const columns = [
     { key: "order_id", label: "Order ID" },
@@ -276,7 +281,7 @@ export default function TransaksiPage() {
                         {row.status_pembayaran}
                       </span>
                     </td>
-                    <td className="text-sm font-medium text-slate-800 dark:text-gray-300">{row.total}</td>
+                    <td className="text-sm font-medium text-slate-800 dark:text-gray-300">{formatIDR.format(row.total || 0)}</td>
                     <td className="px-4 py-3.5 text-sm text-slate-600 dark:text-gray-400">{!row.updated_at ? ("nihil") : dayjs(row.updated_at).format('dddd, DD MMMM YYYY HH:mm')}</td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-1">

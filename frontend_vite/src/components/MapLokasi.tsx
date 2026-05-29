@@ -13,7 +13,7 @@ interface Coords {
     longitude: number;
     user_profiles?: any[];
 }
-
+ 
 export const MapContainer = ({ locations }: MapLocasiProps) => {
   const { theme } = useTheme() 
   const [isLoadingMap, setIsLoadingMap] = useState(true);
@@ -48,7 +48,8 @@ export const MapContainer = ({ locations }: MapLocasiProps) => {
 
 const MapMarker = ({ loc }: any) => {
   const [markerRef, marker] = useAdvancedMarkerRef();
-
+  const minIoHost = import.meta.env.VITE_MINIO_HOST;
+  const minIoPort = import.meta.env.VITE_MINIO_PORT;
   return (
     <>
       <AdvancedMarker
@@ -71,26 +72,32 @@ const MapMarker = ({ loc }: any) => {
         
           }
           >
-            { loc.user_profiles && (
-
-              <div className='flex items-center gap-3'>
-                <p>Teknisi</p>
-                {loc.user_profiles.urlPasfoto ? (
-                  <div className="flex items-center gap-1">
-                    <img src={loc.user_profiles.urlPasfoto} className='w-5 h-5 rounded-full' alt="" />
-                    <span className="text-sm font-medium text-slate-800 text-xs">{loc.user_profiles.nama}</span>
+            {loc.teknisi.length > 0 ? (
+              <>
+              {loc.teknisi.slice(0, 2).map((item :any, index: number) => 
+                item.urlPasfoto ? (
+                  <div key={`${item.id}-${index}`} className="flex items-center gap-1">
+                    <img src={`http://${minIoHost}:${minIoPort}/${item.urlPasfoto}`} className='w-6 h-6 rounded-full' alt="" />
+                    <span className="text-[10px] font-medium text-gray-900">{item.nama}</span>
                   </div>
-                ) :
-                  <div className="flex items-center gap-1">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                      {loc.user_profiles.nama.charAt(0)}
+                ) : (
+                  <div key={`${item.id}-${index}`} className="flex items-center gap-1">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                      {item.nama.charAt(0)}
                     </div>
-                    <span className="text-sm font-medium text-slate-800 text-xs">{loc.user_profiles.nama}</span>
+                    <span className="text-[10px] font-medium text-gray-900 ">{item.nama}</span>
                   </div>
-                }
+                )
+              )}
 
-              </div>
-            )}
+              {loc.teknisi.length > 2 && (
+                <span> dan {loc.teknisi.length - 2} teknisi lainnya</span>
+              )}
+              </>
+              
+            ) :  <p className='text-sm text-slate-600 dark:text-gray-400'>Tidak ada teknisi</p>
+            }
+            
       </InfoWindow>
     </>
   );

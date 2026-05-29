@@ -20,12 +20,15 @@ export function ProdukEdit({ isOpen, onClose, dataEdit }: ProdukEditModalProps) 
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const minIoHost = import.meta.env.VITE_MINIO_HOST;
+    const minIoPort = import.meta.env.VITE_MINIO_PORT;
+
     // --- Efek untuk Mengisi Data Awal (Edit Mode) ---
     useEffect(() => {
         if (dataEdit && isOpen) {
             setNama(dataEdit.nama);
             setHarga(dataEdit.harga);
-            setPreviewUrl(dataEdit.img_url); // Tampilkan gambar lama sebagai preview
+            setPreviewUrl(`http://${minIoHost}:${minIoPort}/${dataEdit.img_url}`); // Tampilkan gambar lama sebagai preview
             setFile(null); // Reset file input karena belum ada file baru
         }
     }, [dataEdit, isOpen]);

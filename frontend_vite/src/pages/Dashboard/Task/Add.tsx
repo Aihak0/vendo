@@ -41,6 +41,9 @@ export function TaskAdd ({isOpen, onClose} : TaskAddModalProps){
 
     const [taskTeknisi, setTaskTeknisi] = useState<any>([]);
 
+    const minIoHost = import.meta.env.VITE_MINIO_HOST;
+    const minIoPort = import.meta.env.VITE_MINIO_PORT;
+
 
     const alert = useAlert();
 
@@ -75,7 +78,7 @@ export function TaskAdd ({isOpen, onClose} : TaskAddModalProps){
         e.preventDefault(); 
         setLoading(true);
 
-        const IdTeknisi = taskTeknisi.map((t: any) => t.user_id);
+        const IdTeknisi = taskTeknisi.map((t: any) => t.id);
         const payload = {
             judul,
             prioritas,
@@ -243,12 +246,12 @@ export function TaskAdd ({isOpen, onClose} : TaskAddModalProps){
                                             {taskTeknisi.length > 0 ? (
                                                 taskTeknisi.map((t: any) => (
                                                 <span
-                                                    key={t.user_id}
+                                                    key={t.id}
                                                     className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 dark:bg-blue-950 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300"
                                                 >
                                                     <img
                                                     alt=""
-                                                    src={t.urlPasfoto}
+                                                    src={`http://${minIoHost}:${minIoPort}/${t.urlPasfoto}`}
                                                     className="size-4 shrink-0 rounded-full bg-gray-700 outline -outline-offset-1 outline-white/10"
                                                     />
                                                     <span>{t.nama}</span>
@@ -258,7 +261,7 @@ export function TaskAdd ({isOpen, onClose} : TaskAddModalProps){
                                                     onClick={(e) => {
                                                         e.stopPropagation(); // Jangan trigger Listbox
                                                         setTaskTeknisi((prev: any[]) =>
-                                                        prev.filter((item) => item.user_id !== t.user_id)
+                                                        prev.filter((item) => item.id !== t.id)
                                                         );
                                                     }}
                                                     className="ml-0.5 text-blue-400 hover:text-blue-600 dark:hover:text-blue-200"
@@ -295,14 +298,14 @@ export function TaskAdd ({isOpen, onClose} : TaskAddModalProps){
                                             ) : (
                                             teknisi.data.map((t: any) => (
                                                 <ListboxOption
-                                                key={t.user_id}
+                                                key={t.id}
                                                 value={t}
                                                 className="group relative cursor-default py-2 pr-9 pl-3 dark:text-white select-none data-focus:bg-blue-500 dark:data-focus:bg-blue-950 data-focus:outline-hidden cursor-pointer"
                                                 >
                                                 <div className="flex items-center">
                                                     <img
                                                     alt=""
-                                                    src={t.urlPasfoto}
+                                                    src={`http://${minIoHost}:${minIoPort}/${t.urlPasfoto}`}
                                                     className="size-5 shrink-0 rounded-full outline -outline-offset-1 outline-white/10"
                                                     />
                                                     <span className="ml-3 block truncate font-normal group-data-selected:font-semibold">

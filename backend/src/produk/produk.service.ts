@@ -3,10 +3,11 @@ import { DatabaseService } from 'src/database/database.service';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as crypto from 'crypto';
+import { MinioService } from 'src/minio/minio.service';
 
 @Injectable()
 export class ProdukService {
-  constructor(private databaseService: DatabaseService) {}
+  constructor(private databaseService: DatabaseService, private minioService: MinioService) {}
 
   async findAll(page?: number, limit?: number, sortAsc?: boolean, sortKey?: string, search?: string, isActive?: string) {
     const db = this.databaseService.getClient();
@@ -85,13 +86,14 @@ export class ProdukService {
       const fileExt = file.originalname.split('.').pop();
       const fileName = `${randomUUID}-${nama.replace(/\s+/g, '_')}.${fileExt}`;
       
-      const uploadDir = path.join(__dirname, '..', '..', 'uploads', 'produk');
-      const filePath = path.join(uploadDir, fileName);
+      const objectName = `produk/${fileName}`;
 
-      await fs.mkdir(uploadDir, { recursive: true });
-      await fs.writeFile(filePath, file.buffer);
-
-      const imgUrl = `/uploads/produk/${fileName}`;
+      await this.minioService.uploadFile(
+        'produk', // bucket
+        fileName,
+        file.buffer,
+        file.mimetype,
+      );
 
       const query = `
         INSERT INTO produk (id, nama, harga, img_url, is_active, created_at)
@@ -99,7 +101,7 @@ export class ProdukService {
         RETURNING *
       `;
 
-      await db.query(query, [randomUUID, nama, Number(harga), imgUrl, true]);
+      await db.query(query, [randomUUID, nama, Number(harga), objectName, true]);
 
       return { success: true, message: 'berhasil menambahkan data Produk', code: 200 };
     } catch (err: any) {
@@ -130,13 +132,14 @@ export class ProdukService {
       if (file) {
         const fileExt = file.originalname.split('.').pop();
         const fileName = `${id}-${Date.now()}.${fileExt}`;
-        const uploadDir = path.join(__dirname, '..', '..', 'uploads', 'produk');
-        const filePath = path.join(uploadDir, fileName);
+        await this.minioService.uploadFile(
+          'produk', // bucket
+          fileName,
+          file.buffer,
+          file.mimetype,
+        );
 
-        await fs.mkdir(uploadDir, { recursive: true });
-        await fs.writeFile(filePath, file.buffer);
-
-        finalImageUrl = `/uploads/produk/${fileName}`;
+        finalImageUrl = `produk/${fileName}`;
       }
 
       const updates: string[] = [];

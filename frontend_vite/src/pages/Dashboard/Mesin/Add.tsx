@@ -20,6 +20,8 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
     const dragRef = useRef<DragState>({ active: false, startR: null, startC: null, curC: null });
     const queryClient = useQueryClient();
     const [loading, setLoading] = useState(false);
+    const minIoHost = import.meta.env.VITE_MINIO_HOST;
+    const minIoPort = import.meta.env.VITE_MINIO_PORT;
 
     const [, setTick] = useState<number>(0);
     // const [error, setError] = useState<Record<string, any>>({});
@@ -334,7 +336,7 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
         e.preventDefault(); 
         setLoading(true);
 
-        const IdTeknisi = teknisiMesin.map((t: any) => t.user_id);
+        const IdTeknisi = teknisiMesin.map((t: any) => t.id);
         const payload = {
             nama: nama,
             rows: rows, 
@@ -455,14 +457,14 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
                                             ) : (
                                             teknisi.data.map((t: any) => (
                                                 <ListboxOption
-                                                key={t.user_id}
+                                                key={t.id}
                                                 value={t}
                                                 className="group relative cursor-default py-2 pr-9 pl-3 dark:text-white select-none data-focus:bg-blue-500 dark:data-focus:bg-blue-950 data-focus:outline-hidden cursor-pointer"
                                                 >
                                                 <div className="flex items-center">
                                                     <img
                                                     alt=""
-                                                    src={t.urlPasfoto}
+                                                    src={`http://${minIoHost}:${minIoPort}/${t.urlPasfoto}`}
                                                     className="size-5 shrink-0 rounded-full outline -outline-offset-1 outline-white/10"
                                                     />
                                                     <span className="ml-3 block truncate font-normal group-data-selected:font-semibold">

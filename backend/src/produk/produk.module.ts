@@ -5,9 +5,10 @@ import { SupabaseModule } from 'src/supabase/supabase.module';
 import { DatabaseModule } from 'src/database/database.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { MinioModule } from 'src/minio/minio.module';
 
 @Module({
-    imports: [DatabaseModule, JwtModule.registerAsync({
+    imports: [DatabaseModule, MinioModule, JwtModule.registerAsync({
         imports: [ConfigModule],
         inject: [ConfigService],
         useFactory: async (configService: ConfigService) => ({

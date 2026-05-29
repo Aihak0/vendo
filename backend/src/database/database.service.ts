@@ -10,10 +10,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   constructor(private configService: ConfigService) {
     // Inisialisasi pool koneksi menggunakan data dari .env Anda
     this.pool = new Pool({
-      host: this.configService.get<string>('DB_HOST') || '192.168.1.6',
+      host: this.configService.get<string>('DB_HOST') || '10.10.8.100',
       port: this.configService.get<number>('DB_PORT') || 5432,
-      user: this.configService.get<string>('DB_USERNAME') || 'ok',
-      password: this.configService.get<string>('DB_PASSWORD') || 'ok',
+      user: this.configService.get<string>('DB_USERNAME') || 'postgres',
+      password: this.configService.get<string>('DB_PASSWORD') || 'postgres',
       database: this.configService.get<string>('DB_DATABASE') || 'vending_machine',
       max: 20, // Batas maksimal koneksi yang terbuka bersamaan
       idleTimeoutMillis: 30000, // Tutup koneksi otomatis jika idle 30 detik

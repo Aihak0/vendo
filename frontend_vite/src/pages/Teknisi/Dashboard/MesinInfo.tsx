@@ -14,7 +14,7 @@ export function MesinInfoModal({isOpen, onClose, dataInfo}: MesinInfoModalProps)
 
     useEffect(() => {
           if (dataInfo && isOpen) {
-              const slots = dataInfo.slot;
+              const slots = dataInfo.slots;
               const groupedByRow = slots.reduce((acc:SlotRow[], curr) => {
                 const rowNum = curr.metadata.row_number;
   
@@ -105,15 +105,15 @@ export function MesinInfoModal({isOpen, onClose, dataInfo}: MesinInfoModalProps)
                         <div className="flex items-center  mb-3 gap-2 items-stretch">
                           <div className="rounded-lg flex flex-1 items-center justify-between text-slate-600 dark:text-gray-300 bg-blue-50/50 dark:bg-slate-900 border border-blue-100 dark:border-slate-600 px-5 py-1">
                             <label className="text-slate-500 dark:text-gray-400">slot kosong </label>
-                            <span className="">{dataInfo?.slot?.filter(item => item.produk_id === null).length || 0}</span>
+                            <span className="">{dataInfo?.slots?.filter(item => item.produk_id === null).length || 0}</span>
                           </div>
                           <div className="rounded-lg flex-1  flex items-center justify-between text-slate-600 dark:text-gray-300 bg-red-50 dark:bg-red-950 border border-red-300 dark:border-red-500 px-5 py-1">
                             <label className="text-red-400 dark:text-red-600">stok kosong </label>
-                            <span className="">{dataInfo?.slot?.filter(item => item.stock === 0).length || 0}</span>
+                            <span className="">{dataInfo?.slots?.filter(item => item.stock === 0).length || 0}</span>
                           </div>
                           <div className="rounded-lg flex flex-1  items-center justify-between text-slate-600 dark:text-gray-300 bg-yellow-50 dark:bg-yellow-950 border border-yellow-300 dark:border-yellow-500 px-5 py-1">
                             <label className="text-yellow-400 dark:text-yellow-600 ">stok hampir habis</label>
-                            <span className="">{dataInfo?.slot?.filter(item => item.stock < 2 && item.stock != 0).length || 0}</span>
+                            <span className="">{dataInfo?.slots?.filter(item => item.stock < 2 && item.stock != 0).length || 0}</span>
                           </div>
                         </div>
                         <div className="flex items-center justify-between mb-3">

@@ -25,6 +25,8 @@ export function MesinMaintenanceModal({isOpen, onClose, dataMesin}: MesinMainten
     style: 'currency',
     currency: 'IDR',
   });
+    const minIoHost = import.meta.env.VITE_MINIO_HOST;
+    const minIoPort = import.meta.env.VITE_MINIO_PORT;
 
   const handleSlotChange = (kode: string, event: any) => {
     console.log("dijalankan")
@@ -99,7 +101,7 @@ export function MesinMaintenanceModal({isOpen, onClose, dataMesin}: MesinMainten
 
     useEffect(() => {
           if (dataMesin && isOpen) {
-              const slots = dataMesin.slot;
+              const slots = dataMesin.slots;
               const groupedByRow = slots.reduce((acc:SlotRow[], curr) => {
                 const rowNum = curr.metadata.row_number;
   
@@ -233,7 +235,7 @@ export function MesinMaintenanceModal({isOpen, onClose, dataMesin}: MesinMainten
                                                                         produkTerkait ? (
                                                                             
                                                                             <div className="flex  gap-2 justify-center items-center">
-                                                                                <img src={`${produkTerkait?.img_url}` } className={`w-full h-10 aspect-square rounded-t-lg object-cover mb-1 brightness-70 `}  alt="" />
+                                                                                <img src={`http://${minIoHost}:${minIoPort}/${produkTerkait?.img_url}` } className={`w-full h-10 aspect-square rounded-t-lg object-cover mb-1 brightness-70 `}  alt="" />
                                                                                 <span className="absolute left-3 bottom-2 text-xs">{c.kode}</span>
                                                                                 <span className="text-xs font-medium dark:text-gray-300 absolute bottom-2 right-3"> {(c.stock || 0) } {c.added_stock && `+${c.added_stock}`}</span>
                                                                                 {isMerged &&           
@@ -320,7 +322,7 @@ export function MesinMaintenanceModal({isOpen, onClose, dataMesin}: MesinMainten
                                         className={`group relative h-fit bg-slate-900 text-gray-300 rounded-lg transition-all duration-300  brightness-60 ${selectedSlot.produk_id === p.id ? 'scale-120 brightness-110' : 'hover:scale-120 hover:brightness-110'} hover:shadow-xl hover:shadow-black/50 z-0 hover:z-10 cursor-pointer`}
                                     >
                                         <img 
-                                        src={p.img_url} 
+                                        src={`http://${minIoHost}:${minIoPort}/${p.img_url}` } 
                                         className="w-full aspect-square rounded-t-lg object-cover mb-1 transition-transform duration-300 g" 
                                         />
                                         <div className="p-2 w-full">

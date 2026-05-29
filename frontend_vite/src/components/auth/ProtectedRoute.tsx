@@ -22,8 +22,11 @@ export const ProtectedRouteAdmin = () => {
       alert.error('Anda tidak diperbolehkan mengakses halaman ini', { title: "Denied" });
     }
   }, [loading, profile]);
-
+  
+   console.log("iki user ta => ", user);
+   console.log("STATUS:", { user, loading, isLoggingOut });
   if(loading) return <Spinner/>;
+  
   if(isLoggingOut) return <Spinner/>;
   if (!user) return <Navigate to="/login" replace />;
 

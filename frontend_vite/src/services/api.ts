@@ -1,21 +1,25 @@
 // src/services/api.ts
 import axios from 'axios';
-import { createClient } from '@supabase/supabase-js';
+// import { createClient } from '@supabase/supabase-js';
 import type { DateType } from 'react-tailwindcss-datepicker';
 
 // const api = axios.create({ baseURL: 'https://vendo-api-0i0p.onrender.com' });
-const api = axios.create({ baseURL: '/api' });
+// const api = axios.create({ baseURL: '/api' });
+const api = axios.create({ baseURL: 'http://localhost:3000' });
 
-const supabase = createClient('https://gqqghwfjsokyqjxztxwk.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxcWdod2Zqc29reXFqeHp0eHdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzMzEzNzgsImV4cCI6MjA4NzkwNzM3OH0.tCPMutwRd3vRDxE5q6pSj38MEXbQnkLYO0QiHzGk9J4');
+// const supabase = createClient('https://gqqghwfjsokyqjxztxwk.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxcWdod2Zqc29reXFqeHp0eHdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzMzEzNzgsImV4cCI6MjA4NzkwNzM3OH0.tCPMutwRd3vRDxE5q6pSj38MEXbQnkLYO0QiHzGk9J4');
 
 // api.js
-api.interceptors.request.use(async (config) => {
-  // Ini sangat cepat karena membaca dari LocalStorage browser
-  const { data: { session } } = await supabase.auth.getSession();
+api.interceptors.request.use((config) => {
   
-  if (session?.access_token) {
-    config.headers.Authorization = `Bearer ${session.access_token}`;
+
+  const token = localStorage.getItem('access_token');
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
+
+  
   return config;
 });
 
@@ -80,6 +84,8 @@ export const getLogMesin = async (search: string, page: number, limit: number, f
   const { data } = await api.get('/mesin/logs', {
     params: { search, page, limit, filter}
   });
+
+
   return data;
 };
 
@@ -106,7 +112,7 @@ export const getMyTask = async (teknisi_id: string, prioritas?: string | null) =
     params: { teknisi_id, prioritas }
   });
   return data;
-};
+}; 
 
 export const getSumary = async (filter: string, dari?: DateType , sampai?: DateType) => {
   // Mengirim query params ?search=... ke backend
@@ -214,12 +220,12 @@ export const updateUser = async (id: string, formData: FormData) => {
 };
 
 export const updateUserByOwn = async (id: string, formData: FormData) => {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
+  // const { data: { session } } = await supabase.auth.getSession();
+  // const token = session?.access_token;
   const { data } = await api.patch(`/user/change_profile_by_owner/${id}`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
-      'Authorization': `Bearer ${token}`
+      // 'Authorization': `Bearer ${token}`
     },
   });
   return data;
