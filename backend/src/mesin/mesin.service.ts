@@ -232,6 +232,8 @@ export class MesinService {
     }
     async update(id: string, body: any) {
 
+      console.log("yeah badyyy",body);
+
       const supabase = this.supabaseService.getClient();
       // 1. Ambil data lama
       try{
@@ -271,21 +273,29 @@ export class MesinService {
           });
         });
 
-        body.teknisi.forEach((item) => {
 
-          const old = oldTeknisi?.find(old => old.teknisi_id === item.user_id);
-          if (!old) {
-            TeknisiToUpsert.push({
-              mesin_id: id,
-              teknisi_id: item.user_id
-            });
-          }
-        });
+        if(body.teknisi){
+          body.teknisi.forEach((item) => {
+  
+            const old = oldTeknisi?.find(old => old.teknisi_id === item.user_id);
+            if (!old) {
+              TeknisiToUpsert.push({
+                mesin_id: id,
+                teknisi_id: item.user_id
+              });
+            }
+          });
+
+        };
 
         // 3. Tentukan mana yang mau dihapus
         const incomingKodes = body.slots.flatMap(s => s.col.map(item => item.kode));
         const itemsToDelete = oldSlots?.filter(old => !incomingKodes.includes(old.kode)) || [];
-        const TeknsiisDelete = oldTeknisi?.filter(old => !body.teknisi.map(t => t.user_id).includes(old.teknisi_id)) || [];
+
+        let TeknsiisDelete;
+        if(body.teknisi){
+          TeknsiisDelete = oldTeknisi?.filter(old => !body.teknisi.map(t => t.user_id).includes(old.teknisi_id)) || [];
+        }
   
         // --- EKSEKUSI DATABASE ---
   
@@ -314,11 +324,13 @@ export class MesinService {
           if (errDel) throw new InternalServerErrorException(errDel.message);
   
         }
-        if (TeknsiisDelete.length > 0) {
-          const deleteIds = TeknsiisDelete.map(item => item.id);
-          const { error: errDel } = await supabase.from('mesin_teknisi').delete().in('id', deleteIds);
-          if (errDel) throw new InternalServerErrorException(errDel.message);
-  
+        if(body.teknisi){
+          if (TeknsiisDelete.length > 0) {
+            const deleteIds = TeknsiisDelete.map(item => item.id);
+            const { error: errDel } = await supabase.from('mesin_teknisi').delete().in('id', deleteIds);
+            if (errDel) throw new InternalServerErrorException(errDel.message);
+    
+          }
         }
   
         // C. Update Mesin
@@ -410,12 +422,16 @@ export class MesinService {
 
         if(oldMesin.status === status) throw new BadRequestException("Permintaan tidak bisa dilanjutkan");
 
+        const cleanStatus = status.trim();
         const { data: dataMesin,error: errorUpdate } = await supabase
           .from("mesin")
-          .update({ status: status })
+          .update({ status: cleanStatus })
           .eq("kode", kode)
-          .select("*, slot(produk_id, kode, stock, metadata, produk(nama, harga, img_url))")
+          .select("*, slot(id, produk_id, kode, stock, metadata, produk(nama, harga, img_url))")
           .single();
+
+        console.log("datamesin",dataMesin);
+        console.log("etrrr",errorUpdate);
         if (errorUpdate) {
           throw new InternalServerErrorException(errorUpdate?.message || "Gagal memperbarui status mesin");
         }
@@ -427,13 +443,14 @@ export class MesinService {
         }else if(status === "offline"){
           messageLog = `Mesin ${dataMesin?.nama} sekarang Offline`;
         } else if(status === "maintenance"){
+          
           messageLog = `Mesin ${dataMesin?.nama} sedang dalam perawatan`;
         }
           const { error: errorLogs } = await supabase
           .from("log_mesin")
           .insert({
             mesin_id: dataMesin?.id,
-            tipe: status,
+            tipe: cleanStatus,
             payload : {
               kode: kode,
               message: messageLog,

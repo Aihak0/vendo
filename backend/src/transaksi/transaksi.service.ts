@@ -182,8 +182,10 @@ export class TransaksiService {
       .eq('mesin_id', dataMesin.id)
 
     // 1. Validasi Input (Singkat & Padat)
-    if (!data.total || !data.kode || !data.items) {
-      await this.sendMqtt(`generate/qr`, { success: false, message: "Data Tidak Lengkap.", data: {}}, 0);
+
+    console.log("data kiriman" ,data)
+    if (!data.total || !data.kode || !data.items || data.items.length === 0) {
+      await this.sendMqtt(`generate/${dataMesin.kode}/qr`, { success: false, message: "Data Tidak Lengkap.", data: {}}, 0);
       return;
     }
 
@@ -218,6 +220,7 @@ export class TransaksiService {
         throw { source: 'midtrans', message: "Transaksi terdeteksi penipuan." };
       }
 
+
       // 5. Simpan ke Supabase via RPC
       const { data: dataInsert, error: errorInsert } = await supabase.rpc(
         "tambah_transaksi_dengan_items",
@@ -233,6 +236,9 @@ export class TransaksiService {
       );
 
       if (errorInsert || (dataInsert && dataInsert.success === false)) {
+
+        console.log(errorInsert);
+        console.log(dataInsert);
         // Jika DB gagal, kita harus CANCEL transaksi yang sudah terlanjur dibuat di Midtrans
         throw { 
           source: 'supabase', 
@@ -259,7 +265,7 @@ export class TransaksiService {
           }
         })
       if (errorLogs) console.log(errorLogs);
-      await this.sendMqtt(`generate/qr`, payload, 0);
+      await this.sendMqtt(`generate/${dataMesin.kode}/qr`, payload, 0);
 
     } catch (error: any) {
       let finalMessage = error.message || "Internal Server Error";
@@ -285,7 +291,7 @@ export class TransaksiService {
         data: {}
       };
       
-      await this.sendMqtt(`generate/qr`, payload, 0);
+      await this.sendMqtt(`generate/${dataMesin.kode}/qr`, payload, 0);
     }
   }
     
@@ -372,8 +378,8 @@ export class TransaksiService {
     });
 
     if (error || !data?.success) {
-      // console.log("errore => ",error);
-      // console.log("datane => ",data);
+      console.log("errore => ",error);
+      console.log("datane => ",data);
       return this.sendMqtt(`transaksi/status`, {success: false, message: error?.message || "Kegagalan sistem."}, 0);
     }
 
