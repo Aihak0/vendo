@@ -423,15 +423,16 @@ export class MesinService {
         if(oldMesin.status === status) throw new BadRequestException("Permintaan tidak bisa dilanjutkan");
 
         const cleanStatus = status.trim();
-        const { data: dataMesin,error: errorUpdate } = await supabase
+        const { data: dataMesin, error: errorUpdate } = await supabase
           .from("mesin")
           .update({ status: cleanStatus })
           .eq("kode", kode)
           .select("*, slot(id, produk_id, kode, stock, metadata, produk(nama, harga, img_url))")
-          .single();
+          // Tambahkan baris di bawah ini untuk mengurutkan slot berdasarkan kode
+          .order("kode", { foreignTable: "slot", ascending: true })
+          .single();  
 
         console.log("datamesin",dataMesin);
-        console.log("etrrr",errorUpdate);
         if (errorUpdate) {
           throw new InternalServerErrorException(errorUpdate?.message || "Gagal memperbarui status mesin");
         }

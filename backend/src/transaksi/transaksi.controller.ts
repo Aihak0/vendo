@@ -11,7 +11,7 @@ export class TransaksiController {
     constructor(private readonly transaksiService: TransaksiService,
         @Inject('HIVE_CLIENT') private client: ClientProxy,
     ){}
-
+ 
     @UseGuards(MqttAuthGuard)
     @MessagePattern('transaksi/data', { qos: 1 })
     async handlePaymentReq(@Payload() payload: any, @Ctx() context: MqttContext){

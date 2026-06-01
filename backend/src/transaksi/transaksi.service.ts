@@ -253,6 +253,8 @@ export class TransaksiService {
         message: "Generating QR",
         data: result,
       };
+
+      console.log("result midtrans => ", result);
        const { error: errorLogs } = await supabase
         .from("log_mesin")
         .insert({
