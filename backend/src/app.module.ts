@@ -28,17 +28,28 @@ import { MinioService } from './minio/minio.service';
 import { MinioModule } from './minio/minio.module';
 
 @Module({
-  imports: [ClientsModule.register([
+  imports: [ClientsModule.registerAsync([
       {
+	
         name: 'MQTT_CLIENT',
-        transport: Transport.MQTT,
-        options: {
-          url: 'mqtts://bc39c402663344478d41da67942456d4.s1.eu.hivemq.cloud:8883',
-          username: 'okelah',
-          password: 'Okelah12',
-          protocol: 'mqtts',
-          rejectUnauthorized: false,
-        },
+	imports: [ConfigModule], // Memastikan ConfigService bisa di-inject
+        inject: [ConfigService],
+        useFactory: (configService: ConfigService) => {
+          const mqttUser = configService.get<string>('MQTT_USER');
+          const mqttPass = configService.get<string>('MQTT_PASSWORD');
+          const mqttHost = configService.get<string>('MQTT_HOST');
+	  const mqttPort = configService.get<string>('MQTT_PORT');
+          return {
+            transport: Transport.MQTT,
+            options: {
+              // Menyusun URL MQTT dengan aman
+              url: `mqtt://${mqttHost}:${mqttPort}`,
+              username: mqttUser!,
+              password: mqttPass,
+              rejectUnauthorized: false,
+            },
+          };
+        }
       },
     ]),
     SupabaseModule, AuthModule, ConfigModule.forRoot({

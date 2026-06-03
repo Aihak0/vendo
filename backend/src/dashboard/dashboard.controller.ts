@@ -7,4 +7,11 @@ export class DashboardController {
     async dataDashboard(@Query("filter") filter: string, @Query("dari") dari: Date, @Query("sampai") sampai: Date){
         return await this.dashboardService.getDataDashboard(filter, dari, sampai);
     }
+    @Get('test-lb')
+    testLB() {
+      return {
+        pid: process.pid,
+        timestamp: new Date(),
+      };
+    }
 }
