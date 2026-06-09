@@ -367,7 +367,7 @@ export class MesinService {
               kode_pos: body.kode_pos,
               updated_at: new Date(Date.now()).toISOString()
             })
-            .select("*, slot(produk_id, kode, stock, metadata, produk(nama, harga, img_url))")
+            .select("*, slot(produk_id, kode, stock, metadata, produk(nama, harga, img_url:reduced_img))")
             .eq("id", id)
             .single();
   
@@ -427,7 +427,7 @@ export class MesinService {
           .from("mesin")
           .update({ status: cleanStatus })
           .eq("kode", kode)
-          .select("*, slot(id, produk_id, kode, stock, metadata, produk(nama, harga, img_url))")
+          .select("*, slot(id, produk_id, kode, stock, metadata, produk(nama, harga, img_url:reduced_img))")
           // Tambahkan baris di bawah ini untuk mengurutkan slot berdasarkan kode
           .order("kode", { foreignTable: "slot", ascending: true })
           .single();  

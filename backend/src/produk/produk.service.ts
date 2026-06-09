@@ -1,6 +1,7 @@
 // produk.service.ts
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from 'src/supabase/supabase.service';
+import sharp from 'sharp';
 
 @Injectable()
 export class ProdukService {
@@ -71,52 +72,85 @@ export class ProdukService {
     }
     
   }
-  async add(body: any, file: Express.Multer.File){
+  async add(body: any, file: Express.Multer.File) {
     const supabase = this.supabaseService.getClient(); 
 
     const { nama, harga } = body;
-     
     
-    try{
+    try {
       if (!file) throw new BadRequestException('File gambar harus diunggah');
       if (!nama || !harga) throw new NotFoundException('Data tidak lengkap');
+      
       const randomUUID = crypto.randomUUID();
-      const fileExt = file.originalname.split('.').pop();
       const folderName = randomUUID;
-      const filePath = `uploads/${folderName}/${nama.replace(/\s+/g, '_')}.${fileExt}`;
+      const sanitizedNama = nama.replace(/\s+/g, '_');
+      
+      // Path untuk file original
+      const filePath = `uploads/${folderName}/${sanitizedNama}.jpg`;
+      // Path untuk file yang diperkecil (130x130)
+      const reducedFilePath = `reduced/${folderName}/${sanitizedNama}.jpg`;
 
+      // --- 1. UPLOAD FILE ORIGINAL (TIDAK BERUBAH) ---
+
+      const originalJpgBuffer = await sharp(file.buffer)
+        .jpeg({ quality: 90 }) // Convert ke JPG dengan kualitas tinggi
+        .toBuffer();
+        
       const { error: storageError } = await supabase.storage
-        .from('gambar_produk') // Ganti dengan nama bucket Anda
-        .upload(filePath, file.buffer, {
-          contentType: file.mimetype,
+        .from('gambar_produk')
+        .upload(filePath, originalJpgBuffer, {
+          contentType: 'image/jpeg',
           upsert: false,
         });
 
       if (storageError) throw new BadRequestException(storageError.message);
 
+      // --- 2. PROSES RESIZE & UPLOAD FILE REDUCED ---
+      // Mengubah ukuran gambar menjadi 130x130 menggunakan sharp
+      const reducedBuffer = await sharp(file.buffer)
+        .resize(130, 130, { fit: 'cover', position: 'center' })
+        .jpeg({ quality: 80 }) // <-- WAJIB TAMBAHKAN INI untuk convert ke JPG asli
+        .toBuffer();
+
+      // Unggah gambar yang sudah diperkecil ke folder reduced/
+      const { error: reducedStorageError } = await supabase.storage
+        .from('gambar_produk')
+        .upload(reducedFilePath, reducedBuffer, {
+          contentType: 'image/jpeg',
+          upsert: false,
+        });
+
+      if (reducedStorageError) throw new BadRequestException(reducedStorageError.message);
+
+      // --- 3. AMBIL PUBLIC URL FILE ORIGINAL ---
       const { data: urlData } = supabase.storage
         .from('gambar_produk')
         .getPublicUrl(filePath);
 
-      // 3. Simpan Metadata ke Database
+      const { data: reducedUrlData } = supabase.storage
+        .from('gambar_produk')
+        .getPublicUrl(reducedFilePath);
+
+      // --- 4. SIMPAN METADATA KE DATABASE ---
       const { error: dbError } = await supabase
-        .from('produk') // Ganti dengan nama tabel Anda
+        .from('produk')
         .insert({ 
             id: randomUUID,
             nama: nama, 
             harga: Number(harga), 
-            img_url: urlData.publicUrl 
+            img_url: urlData.publicUrl, // Menyimpan URL original (bisa diganti reduced jika mau)
+            reduced_img: reducedUrlData.publicUrl // Menyimpan URL gambar yang diperkecil
           })
         .select();
 
       if (dbError) throw new BadRequestException(dbError.message);
+      
       return { success: true, message: "berhasil menambahkan data Produk", code: 200};
-    }catch(err: any){
+      
+    } catch(err: any) {
       throw err;
-      // return {success: false, message: err.response.message || "Kegagalan Sistem", code: err.status}
     }
   }
-
   
   async update(id: string, body: any, file?: Express.Multer.File) {
     const supabase = this.supabaseService.getClient();
@@ -140,36 +174,72 @@ export class ProdukService {
       }
 
       let finalImageUrl = existingProduct.img_url;
+      let finalReducedImageUrl = existingProduct.reduced_img;
 
       if (file) {
-        const fileExt = file.originalname.split('.').pop();
-        const filePath = `uploads/${id}/${nama.replace(/\s+/g, '_')}.${fileExt}`;      
+        const filePath = `uploads/${id}/${nama.replace(/\s+/g, '_')}.jpg`;      
         const BUCKET_NAME = 'gambar_produk';
-        const oldImgPath = existingProduct.img_url.split(`${BUCKET_NAME}/`)[1];
-
-        const { error : errorRemoveOldImg } = await supabase
-          .storage
-          .from(BUCKET_NAME)
-          .remove([oldImgPath]);
-        
-        if(errorRemoveOldImg){
-          throw new NotFoundException(errorRemoveOldImg.message);
+        const oldImgPath = existingProduct.img_url?.split(`${BUCKET_NAME}/`)[1] ?? null;
+        const oldReducedImgPath = existingProduct.reduced_img?.split(`${BUCKET_NAME}/`)[1] ?? null;
+        const reducedFilePath = `reduced/${id}/${nama.replace(/\s+/g, '_')}.jpg`;
+        if(oldImgPath){
+          const { error : errorRemoveOldImg } = await supabase
+            .storage
+            .from(BUCKET_NAME)
+            .remove([oldImgPath]);
+          
+          if(errorRemoveOldImg){
+            throw new NotFoundException(errorRemoveOldImg.message);
+          }
         }
+
+        if(oldReducedImgPath){
+          const { error : errorRemoveOldReducedImg } = await supabase
+            .storage
+            .from(BUCKET_NAME)
+            .remove([oldReducedImgPath]);
+          
+          if(errorRemoveOldReducedImg){
+            throw new NotFoundException(errorRemoveOldReducedImg.message);
+          }
+        }
+        
+        const originalJpgBuffer = await sharp(file.buffer)
+        .jpeg({ quality: 90 }) // Convert ke JPG dengan kualitas tinggi
+        .toBuffer();
 
         const { error: storageError } = await supabase.storage
           .from(BUCKET_NAME)
-          .upload(filePath, file.buffer, {
-            contentType: file.mimetype,
+          .upload(filePath, originalJpgBuffer, {
+            contentType: 'image/jpeg',
             upsert: true, // Gunakan true agar bisa menimpa jika nama sama
           });
 
         if (storageError) throw new InternalServerErrorException(storageError.message);
+          const reducedBuffer = await sharp(file.buffer)
+          .resize(130, 130, { fit: 'cover', position: 'center' })
+          .jpeg({ quality: 80 }) // <-- WAJIB TAMBAHKAN INI untuk convert ke JPG asli
+          .toBuffer();
+
+        // Unggah gambar yang sudah diperkecil ke folder reduced/
+        const { error: reducedStorageError } = await supabase.storage
+          .from(BUCKET_NAME)
+          .upload(reducedFilePath, reducedBuffer, {
+            contentType: 'image/jpeg',
+            upsert: false,
+          });
+
+      if (reducedStorageError) throw new BadRequestException(reducedStorageError.message);
 
         const { data: urlData } = supabase.storage
           .from(BUCKET_NAME)
           .getPublicUrl(filePath);
+        const { data: reducedUrlData } = supabase.storage
+          .from(BUCKET_NAME)
+          .getPublicUrl(reducedFilePath);
 
         finalImageUrl = urlData.publicUrl;
+        finalReducedImageUrl = reducedUrlData.publicUrl;
       }
 
       // 3. Update data di database
@@ -180,7 +250,7 @@ export class ProdukService {
         .update({
           ...(nama != existingProduct.nama && {nama}),
           ...(hargaNumber != existingProduct.harga && {harga: hargaNumber}),
-          ...(file && {img_url: finalImageUrl}),
+          ...(file && {img_url: finalImageUrl, reduced_img: finalReducedImageUrl}),
           updated_at: now.toISOString()
           
         })
