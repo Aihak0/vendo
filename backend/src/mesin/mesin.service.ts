@@ -665,7 +665,7 @@ export class MesinService {
               json_build_object(
                 'nama', p.nama,
                 'harga', p.harga,
-                'img_url', p.img_url
+                'img_url', p.reduced_img
               ) as produk
             FROM slot s
             LEFT JOIN produk p
@@ -748,7 +748,7 @@ export class MesinService {
                       SELECT json_build_object(
                         'nama', p.nama,
                         'harga', p.harga,
-                        'img_url', p.img_url
+                        'img_url', p.reduced_img
                       )
                       FROM produk p 
                       WHERE p.id = s.produk_id
