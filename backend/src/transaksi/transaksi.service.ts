@@ -180,7 +180,7 @@ export class TransaksiService {
     const count = parseInt(countResult.rows[0].count, 10);
 
     if (!data.total || !data.kode || !data.items || !dataMesin) {
-      await this.sendMqtt(`generate/qr`, { success: false, message: 'Data Tidak Lengkap.', data: {} }, 0);
+      await this.sendMqtt(`generate/${dataMesin.kode}/qr`, { success: false, message: 'Data Tidak Lengkap.', data: {} }, 0);
       return;
     }
 
@@ -233,7 +233,7 @@ export class TransaksiService {
         data: result,
       };
 
-      await this.sendMqtt(`generate/qr`, payload, 1);
+      await this.sendMqtt(`generate/${dataMesin.kode}/qr`, payload, 1);
     } catch (error: any) {
       await db.query('ROLLBACK');
       console.error('Payment Request Error:', error);

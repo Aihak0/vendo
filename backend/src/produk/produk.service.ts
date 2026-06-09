@@ -1,9 +1,10 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from 'src/database/database.service';
-import * as path from 'path';
-import * as fs from 'fs/promises';
+// import * as path from 'path';
+// import * as fs from 'fs/promises';
 import * as crypto from 'crypto';
 import { MinioService } from 'src/minio/minio.service';
+import sharp from 'sharp';
 
 @Injectable()
 export class ProdukService {
@@ -84,24 +85,41 @@ export class ProdukService {
 
       const randomUUID = crypto.randomUUID();
       const fileExt = file.originalname.split('.').pop();
-      const fileName = `${randomUUID}-${nama.replace(/\s+/g, '_')}.${fileExt}`;
+      const fileName = `${randomUUID}-${nama.replace(/\s+/g, '_')}.jpg`;
       
-      const objectName = `produk/${fileName}`;
+      const objectName = `produk/uploads/${fileName}`;
+      const reducedJpgBuffer = `produk/reduced/${fileName}`;
+
+      const originalJpgBuffer = await sharp(file.buffer)
+        .jpeg({ quality: 90 }) // Convert ke JPG dengan kualitas tinggi
+        .toBuffer();
+        
+      const reducedBuffer = await sharp(file.buffer)
+        .resize(130, 130, { fit: 'cover', position: 'center' })
+        .jpeg({ quality: 80 }) // <-- WAJIB TAMBAHKAN INI untuk convert ke JPG asli
+        .toBuffer();
 
       await this.minioService.uploadFile(
         'produk', // bucket
-        fileName,
-        file.buffer,
-        file.mimetype,
+        `upload/${fileName}`,
+          originalJpgBuffer,
+        'image/jpeg',
+      );
+      
+      await this.minioService.uploadFile(
+        'produk', // bucket
+        `reduced/${fileName}`,
+        reducedBuffer,
+        'image/jpeg',
       );
 
       const query = `
-        INSERT INTO produk (id, nama, harga, img_url, is_active, created_at)
-        VALUES ($1, $2, $3, $4, $5, NOW())
+        INSERT INTO produk (id, nama, harga, img_url, reduced_img, is_active, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, NOW())
         RETURNING *
       `;
 
-      await db.query(query, [randomUUID, nama, Number(harga), objectName, true]);
+      await db.query(query, [randomUUID, nama, Number(harga), objectName, reducedJpgBuffer, true]);
 
       return { success: true, message: 'berhasil menambahkan data Produk', code: 200 };
     } catch (err: any) {
@@ -128,18 +146,51 @@ export class ProdukService {
 
       const existingProduct = checkResult.rows[0];
       let finalImageUrl = existingProduct.img_url;
+      let finalReducedImageUrl = existingProduct.reduced_img;
 
       if (file) {
         const fileExt = file.originalname.split('.').pop();
-        const fileName = `${id}-${Date.now()}.${fileExt}`;
-        await this.minioService.uploadFile(
-          'produk', // bucket
-          fileName,
-          file.buffer,
-          file.mimetype,
+        const fileName = `${id}-${Date.now()}.jpg`;
+        const [bucket, ...objectParts] = existingProduct.img_url.split('/');
+        const objectName = objectParts.join('/');
+        const [bucketReduced, ...objectPartsReduced] = existingProduct.reduced_img.split('/');
+        const objectNameReduced = objectPartsReduced.join('/');
+
+        await this.minioService.deleteFile(
+          bucket, // bucket
+          objectName
+        );
+        await this.minioService.deleteFile(
+          bucketReduced, // bucket
+          objectNameReduced
         );
 
-        finalImageUrl = `produk/${fileName}`;
+        const originalJpgBuffer = await sharp(file.buffer)
+        .jpeg({ quality: 90 }) // Convert ke JPG dengan kualitas tinggi
+        .toBuffer();
+        
+        const reducedBuffer = await sharp(file.buffer)
+          .resize(130, 130, { fit: 'cover', position: 'center' })
+          .jpeg({ quality: 80 }) // <-- WAJIB TAMBAHKAN INI untuk convert ke JPG asli
+          .toBuffer();
+
+
+        await this.minioService.uploadFile(
+          'produk', // bucket
+          `upload/${fileName}`,
+          originalJpgBuffer,
+           'image/jpeg',
+        );
+
+        await this.minioService.uploadFile(
+          'produk', // bucket
+          `reduced/${fileName}`,
+            reducedBuffer,
+           'image/jpeg',
+        );
+
+        finalImageUrl = `produk/upload/${fileName}`;
+        finalReducedImageUrl = `produk/reduced/${fileName}`;
       }
 
       const updates: string[] = [];

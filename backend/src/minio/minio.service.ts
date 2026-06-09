@@ -32,6 +32,13 @@ export class MinioService {
       },
     );
 
-    return `http://192.168.1.6:9001/${bucket}/${fileName}`;
+    return `http://${this.configService.get<string>('MINIO_ENDPOINT')}:9001/${bucket}/${fileName}`;
   }
+
+   async deleteFile(
+    bucket: string,
+    objectName: string,
+    ): Promise<void> {
+      await this.client.removeObject(bucket, objectName);
+    }
 }
