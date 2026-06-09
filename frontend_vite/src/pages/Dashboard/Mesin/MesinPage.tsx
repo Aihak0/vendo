@@ -282,7 +282,7 @@ export default function MesinPage() {
                                         dark:checked:bg-blue-600 dark:checked:border-blue-600`}
                         />
                       </td>
-                      <td className="px-4 py-3.5 text-sm text-slate-600 dark:text-gray-400">{row.kode.slice(0, 8)}</td>
+                      <td className="px-4 py-3.5 text-sm text-slate-600 dark:text-gray-400">{row.kode}</td>
                       <td className="px-4 py-3.5">
                     
            
