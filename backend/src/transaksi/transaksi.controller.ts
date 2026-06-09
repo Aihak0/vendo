@@ -13,7 +13,7 @@ export class TransaksiController {
     ){}
 
     @UseGuards(MqttAuthGuard)
-    @MessagePattern('transaksi/data', { qos: 1 })
+    @MessagePattern('$share/nestjs-backend/transaksi/data', { qos: 1 })
     async handlePaymentReq(@Payload() payload: any, @Ctx() context: MqttContext){
         const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
         const dataMesin = (context as any).mesin;
@@ -29,7 +29,7 @@ export class TransaksiController {
     }
 
     @UseGuards(MqttAuthGuard)
-    @MessagePattern('transaksi/complete')
+    @MessagePattern('$share/nestjs-backend/transaksi/complete')
     async completeOrder(@Payload() payload: any, @Ctx() context: MqttContext){
         const dataMesin = (context as any).mesin;
         const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
@@ -45,7 +45,7 @@ export class TransaksiController {
     } 
 
     @UseGuards(MqttAuthGuard)
-    @MessagePattern('transaksi/cancel')
+    @MessagePattern('$share/nestjs-backend/transaksi/cancel')
     async cancelOrder(@Payload() payload: any, @Ctx() context: MqttContext){
         const dataMesin = (context as any).mesin;
 
@@ -62,7 +62,7 @@ export class TransaksiController {
     }
 
     @UseGuards(MqttAuthGuard)
-    @MessagePattern('transaksi/refund')
+    @MessagePattern('$share/nestjs-backend/transaksi/refund')
     async refundOrder(@Payload() payload: any, @Ctx() context: MqttContext){
         const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
         const dataMesin = (context as any).mesin;

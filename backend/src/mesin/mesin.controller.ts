@@ -63,7 +63,7 @@ export class MesinController {
     }
 
     // @UseGuards(MqttAuthGuard)
-    @MessagePattern("mesin/+/status")
+    @MessagePattern("$share/nestjs-backend/mesin/+/status")
     async UpdateStatus(@Payload() payload:any, @Ctx() context: MqttContext) {
       const topic = context.getTopic(); // Ini adalah "mesin/123/status"
       const kodeMesin = topic.split('/')[1];
