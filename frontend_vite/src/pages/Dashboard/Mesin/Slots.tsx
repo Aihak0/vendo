@@ -24,13 +24,19 @@ export function MesinSlot({isOpen, onClose, dataSlot}: MesinSlotModalProps){
     const queryClient = useQueryClient();
     const alert = useAlert();
 
+    const minIoHost = import.meta.env.VITE_MINIO_HOST;
+    const minIoPort = import.meta.env.VITE_MINIO_PORT;
     const handleSlotChange = (kode: string, event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = event.target;
-
-        
+        const numValue = Number(value);
+        const currentMaxStock = Number(selectedSlot!.max_stock) || 0;
         let finalValue: any = value;
 
-        if (name === "stock") {
+        if (name === "stock" && numValue > currentMaxStock) {
+            alert.error(`Stok tidak boleh melebihi Max Stok (${currentMaxStock})`, { title: "Invalid Input" });
+            return;
+        }
+        if (name === "stock" || name === "max_stock") {
     
             finalValue = value === "" ? "" : Number(value);
         }
@@ -64,15 +70,16 @@ export function MesinSlot({isOpen, onClose, dataSlot}: MesinSlotModalProps){
                 col: row.col.map((item) => ({
                     ...item, 
                     produk_id: "",
-                    stock: 0
+                    stock: 0,
+                    max_stock: 0,
                 }))
             }))
         );
     };
 
-    useEffect(() => {
-        console.log("dataSlot", dataSlot);
-    }, [dataSlot]);
+    // useEffect(() => {
+    //     console.log("dataSlot", selectedSlot);
+    // }, [selectedSlot]);
 
     useEffect(() =>{
          if (dataSlot && isOpen) {
@@ -100,7 +107,8 @@ export function MesinSlot({isOpen, onClose, dataSlot}: MesinSlotModalProps){
                 span: curr.metadata.span,
                 gabungan: curr.metadata.gabungan,
                 produk_id: curr.produk_id,
-                stock: curr.stock
+                stock: curr.stock,
+                max_stock: curr.max_stock
               });
 
               // Urutkan kolom berdasarkan col_number agar rapi
@@ -112,7 +120,6 @@ export function MesinSlot({isOpen, onClose, dataSlot}: MesinSlotModalProps){
             groupedByRow.sort((a, b) => a.row_number - b.row_number);
 
             setSlot(groupedByRow);
-            console.log("slot yang dis et", groupedByRow)
         }
     },[dataSlot, isOpen])
 
@@ -166,7 +173,7 @@ export function MesinSlot({isOpen, onClose, dataSlot}: MesinSlotModalProps){
                                         </div>
                                         {selectedSlot && (
 
-                                            <form onSubmit={handleUpdateSlot} className="py-2 space-y-5 min-h-55 relative text-base dark:text-gray-400">
+                                            <form onSubmit={handleUpdateSlot} className="py-2 space-y-5 min-h-70 relative text-base dark:text-gray-400">
                                                 { products && (
                                                     <div className="mb-3">
                                                         <label className="block mb-2.5 text-sm text-xs">Produk</label>
@@ -188,6 +195,19 @@ export function MesinSlot({isOpen, onClose, dataSlot}: MesinSlotModalProps){
                                                     <div className="relative flex-1">
                                                         <FileBox className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 size-4"/>
                                                         <input type="number" name="stock" value={selectedSlot.stock === 0 ? "" : selectedSlot.stock} 
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === '-' || e.key === 'e') e.preventDefault();
+                                                            }} 
+                                                            onChange={(e) => handleSlotChange(selectedSlot.kode, e)} 
+                                                            placeholder="Stok"
+                                                            className="min-w-0 w-full bg-blue-50/50 dark:bg-slate-900 border border-blue-100 dark:border-slate-700 rounded pl-10 px-4 py-2 text-sm dark:text-gray-300 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:ring-2 focus:ring-blue-50 dark:focus:ring-slate-500/20 transition-all"/>
+                                                    </div>
+                                                </div>
+                                                <div className="mb-2">
+                                                    <label className="block mb-2.5 text-sm text-xs">Max Stok</label>
+                                                    <div className="relative flex-1">
+                                                        <FileBox className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 size-4"/>
+                                                        <input type="number" name="max_stock" value={selectedSlot.max_stock === 0 ? "" : selectedSlot.max_stock} 
                                                             onKeyDown={(e) => {
                                                                 if (e.key === '-' || e.key === 'e') e.preventDefault();
                                                             }} 
@@ -273,7 +293,7 @@ export function MesinSlot({isOpen, onClose, dataSlot}: MesinSlotModalProps){
                                                                                 <>
                                                                                     
                                                                                 <div className="flex mt-6 gap-2">
-                                                                                    <img src={`${produkTerkait?.img_url}` } className="w-10 h-10" alt="" />
+                                                                                    <img src={`http://${minIoHost}:${minIoPort}/${produkTerkait?.img_url}` } className="w-10 h-10" alt="" />
 
                                                                                     <div className="flex items-center">
                                                                                         <p className="text-xs dark:text-gray-300 p-auto">{produkTerkait?.nama}</p> 
@@ -305,7 +325,7 @@ export function MesinSlot({isOpen, onClose, dataSlot}: MesinSlotModalProps){
                                                                             produkTerkait ? (
                                                                                 
                                                                                 <div className="flex mt-6 gap-2">
-                                                                                    <img src={`${produkTerkait?.img_url}` } className="w-10 h-10" alt="" />
+                                                                                    <img src={`http://${minIoHost}:${minIoPort}/${produkTerkait?.img_url}` } className="w-10 h-10" alt="" />
 
                                                                                     <div className="flex items-center">
                                                                                         <p className="text-xs dark:text-gray-300 p-auto">{produkTerkait?.nama}</p> 

@@ -152,7 +152,7 @@ export function MesinInfoModal({isOpen, onClose, dataInfo}: MesinInfoModalProps)
                                           min-h-10 flex flex-col items-center justify-center gap-1 group inline-block
                                           rounded-lg border-[1.5px] text-center px-3 py-2
                                           transition-colors duration-100 select-none relative
-                                          ${c.produk && c.stock === 0 ? 'bg-red-200 dark:bg-red-950  border-red-300 dark:border-red-700 text-red-500' :  c.stock && c.stock <= 5 ? 'bg-yellow-200 dark:bg-yellow-950  border-yellow-300 dark:border-yellow-700 text-yellow-500' : c.produk && c.stock && c.stock > 5 ? 'bg-green-100 dark:bg-green-950 border-green-300 dark:border-green-700 text-green-400 ' : 
+                                          ${c.produk && c.stock === 0 ? 'bg-red-200 dark:bg-red-950  border-red-300 dark:border-red-700 text-red-500' :  c.produk &&  c.stock  && c.max_stock && c.stock / c.max_stock * 100  <= 50 ? 'bg-yellow-200 dark:bg-yellow-950  border-yellow-300 dark:border-yellow-700 text-yellow-500' : c.produk && c.stock && c.stock > 5 ? 'bg-green-100 dark:bg-green-950 border-green-300 dark:border-green-700 text-green-400 ' : 
                                              "bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-700 text-gray-400 "
                                           }
                                         `}

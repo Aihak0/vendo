@@ -29,11 +29,17 @@ export function MesinMaintenanceModal({isOpen, onClose, dataMesin}: MesinMainten
     const minIoPort = import.meta.env.VITE_MINIO_PORT;
 
   const handleSlotChange = (kode: string, event: any) => {
-    console.log("dijalankan")
       const { name, value } = event.target;
-
+        const numValue = Number(value);
+        const currentMaxStock = Number(selectedSlot!.max_stock) || 0;
       
       let finalValue: any = value;
+
+        if (name === "added_stock" && numValue > currentMaxStock) {
+  
+            alert.error(`Stok tidak boleh melebihi Max Stok (${currentMaxStock})`, { title: "Invalid Input" });
+            return;
+        }
 
       if (name === "added_stock") {
   
@@ -125,6 +131,7 @@ export function MesinMaintenanceModal({isOpen, onClose, dataMesin}: MesinMainten
                     gabungan: curr.metadata.gabungan,
                     id: curr.id,
                     stock: curr.stock || 0,
+                    max_stock: curr.max_stock || 0,
                     ...(curr.produk && {
                         produk_id: curr.produk_id,
                         produk: curr.produk
@@ -144,17 +151,17 @@ export function MesinMaintenanceModal({isOpen, onClose, dataMesin}: MesinMainten
           }
       }, [dataMesin, isOpen]);
       useEffect(() =>{
-        console.log("dataSlot => ", slot);
-      },[slot])
+        console.log("dataSlot => ", dataMesin);
+      },[dataMesin])
       return(
          <Dialog open={isOpen} onClose={onClose} className="relative z-50">
             <DialogBackdrop transition className="fixed inset-0 bg-zinc-900/50 transition-opacity" />
             <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
-              <div className="flex min-h-full justify-center p-4 items-center sm:p-0">
-                  <DialogPanel className="flex relative p-6 transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 text-left shadow-xl outline outline-blue-50 dark:outline-blue-950 transition-all h-fit mt-10 mb-10 ">
+              <div className="flex min-h-full justify-center p-2 sm:p-4 items-start sm:items-center">
+                  <DialogPanel className="flex flex-col relative p-4 sm:p-6 transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 text-left shadow-xl outline outline-blue-50 dark:outline-blue-950 transition-all w-full max-w-[95vw] sm:max-w-2xl lg:max-w-5xl my-6">
                       
                       {/* Form Section */}
-                    <div className="flex flex-col w-fit px-1 min-w-md">
+                    <div className="flex flex-col w-full px-1">
                         <div className="sm:flex sm:items-start mb-3">
                             <div className="mx-auto flex size-12 shrink-0 items-center justify-center rounded-full bg-blue-500/10 sm:mx-0 sm:size-10">
                                 <Info aria-hidden="true" className="size-6 text-blue-400" />
@@ -193,10 +200,10 @@ export function MesinMaintenanceModal({isOpen, onClose, dataMesin}: MesinMainten
                             </div>
                         </div>
                         
-                        <div className="flex md:flex-col lg:flex-row gap-3 mb-4">
+                        <div className="flex flex-col lg:flex-row gap-3 mb-4">
                             <div className="pr-2">
 
-                                <div className="overflow-y-auto max-h-[400px] w-[500px]">
+                                <div className="overflow-y-auto max-h-[300px] sm:max-h-[400px] w-full lg:w-[500px] lg:shrink-0">
                                     <div className="flex items-center gap-3 py-1 mb-2">
                                         <div className="flex-1 h-px bg-blue-400 dark:bg-slate-600" />
                                             <span className="block text-sm text-xs text-blue-400 dark:text-slate-500">
@@ -226,7 +233,7 @@ export function MesinMaintenanceModal({isOpen, onClose, dataMesin}: MesinMainten
                                                                         rounded-lg border-[1.5px] 
                                                                         transition-colors duration-100 select-none relative
                                                                         ${isSelected && 'brightness-120'}
-                                                                        ${c.produk && c.stock === 0 ? 'bg-red-200 dark:bg-red-950  border-red-300 dark:border-red-700 text-red-500' :  c.stock && c.stock <= 5 ? 'bg-yellow-200 dark:bg-yellow-950  border-yellow-300 dark:border-yellow-700 text-yellow-500' : c.produk && c.stock && c.stock > 5 ? 'bg-green-200 dark:bg-green-950 border-green-300 dark:border-green-700 text-green-400 ' : 
+                                                                        ${c.produk && c.stock === 0 ? 'bg-red-200 dark:bg-red-950  border-red-300 dark:border-red-700 text-red-500' :  c.produk &&  c.stock  && c.max_stock && c.stock / c.max_stock * 100  <= 50 ? 'bg-yellow-200 dark:bg-yellow-950  border-yellow-300 dark:border-yellow-700 text-yellow-500' : c.produk && c.stock && c.stock > 5 ? 'bg-green-200 dark:bg-green-950 border-green-300 dark:border-green-700 text-green-400 ' : 
                                                                          "bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-700 text-gray-400 "
                                                                         }
                                                                         `}>
@@ -238,6 +245,7 @@ export function MesinMaintenanceModal({isOpen, onClose, dataMesin}: MesinMainten
                                                                                 <img src={`http://${minIoHost}:${minIoPort}/${produkTerkait?.img_url}` } className={`w-full h-10 aspect-square rounded-t-lg object-cover mb-1 brightness-70 `}  alt="" />
                                                                                 <span className="absolute left-3 bottom-2 text-xs">{c.kode}</span>
                                                                                 <span className="text-xs font-medium dark:text-gray-300 absolute bottom-2 right-3"> {(c.stock || 0) } {c.added_stock && `+${c.added_stock}`}</span>
+                                                                                <span className="absolute left-1/2 -translate-x-1/2 bottom-2 text-xs">Max Stock: {c.max_stock || 0}</span>
                                                                                 {isMerged &&           
                                                                                     <span className="text-[8px] py-0.5 px-2 bg-emerald-500 absolute right-1 top-1 rounded-sm text-white dark:bg-emerald-700">
                                                                                         {c.span} kolom
@@ -250,6 +258,7 @@ export function MesinMaintenanceModal({isOpen, onClose, dataMesin}: MesinMainten
                                                                             <div className="flex h-full items-center justify-center">
                                                                                 <p className="text-xs text-center">No Product</p>
                                                                                 <span className="absolute left-3 bottom-2 text-xs">{c.kode}</span>
+                                                                                <span className="absolute right-3 bottom-2 text-xs">Max Stock: {c.max_stock || 0}</span>
                                                                                 {isMerged &&           
                                                                                     <span className="text-[8px] py-0.5 px-2 bg-emerald-500 absolute right-1 top-1 rounded-sm text-white dark:bg-emerald-700">
                                                                                         {c.span} kolom
@@ -269,7 +278,7 @@ export function MesinMaintenanceModal({isOpen, onClose, dataMesin}: MesinMainten
                                     </div>
                                 </div>
                             </div>
-                          <div className="lg:max-w-100 md:w-[500px]">
+                          <div className="w-full min-w-0">
                             
                             {produkLoading ? (
                               <p>memuat</p>
@@ -277,9 +286,9 @@ export function MesinMaintenanceModal({isOpen, onClose, dataMesin}: MesinMainten
                               selectedSlot &&
                               <>
                           
-                              <div className="flex justify-between items-center items-stretch gap-3">
+                              <div className="flex flex-wrap sm:flex-nowrap justify-between items-stretch gap-2 sm:gap-3">
                                 <button disabled={ !selectedSlot.stock || selectedSlot.stock === 0} onClick={() => handleSlotChange(selectedSlot.kode, {target: {name:"stock", value: (selectedSlot.stock || 0)- 1}})} 
-                                        className="bg-slate-900 px-3 py-6 rounded-lg text-gray-300 border border-slate-700 disabled:text-gray-400"><Minus /></button>
+                                        className="bg-slate-900 px-3 py-6    rounded-lg text-gray-300 border border-slate-700 disabled:text-gray-400"><Minus /></button>
                                 <input type="text" disabled value={selectedSlot.stock ? selectedSlot.stock : 0} className="min-w-0 w-full text-gray-300 bg-blue-50/50 dark:bg-slate-900 border border-blue-100 dark:border-slate-700 rounded px-4 py-2 text-xl text-center  placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:ring-2 focus:ring-blue-50 dark:focus:ring-slate-500/20 transition-all" />
                                 <input type="number" value={!selectedSlot.added_stock || selectedSlot.added_stock === 0 ? "" : selectedSlot.added_stock} 
                                     onKeyDown={(e) => {
@@ -298,7 +307,7 @@ export function MesinMaintenanceModal({isOpen, onClose, dataMesin}: MesinMainten
                                         </span>
                                     <div className="flex-1 h-px bg-blue-400 dark:bg-slate-600" />
                                 </div>
-                                <div className="grid grid-cols-4 gap-4"> {/* Container utama */}
+                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-4"> {/* Container utama */}
                                     {products.data.map((p: any) => (
                                     <div 
                                         key={p.id} 

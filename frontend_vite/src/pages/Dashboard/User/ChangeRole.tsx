@@ -21,7 +21,7 @@ export function UserChangeRole({ isOpen, onClose, dataToChange}: UserChangeRoleM
     
     const mutation = useMutation({
   // Kita bungkus dataDelete ke dalam properti 'id' sesuai kontrak backend
-    mutationFn: (changeTo: string) => changeRole(dataToChange.data.user_id, changeTo ), 
+    mutationFn: (changeTo: string) => changeRole(dataToChange.data.id, changeTo ), 
   
     onSuccess: (data) => {
         alert.success(data.message || 'Produk berhasil dihapus');

@@ -24,7 +24,7 @@ export default function PergerakanStockPage() {
   const [activeTipePerubahan, setActiveTipePerubahan] = useState('all');
 
   const [sortKey, setSortKey] = useState<string | null>(null);
-  const [sortAsc, setSortAsc] = useState(true);
+  const [sortAsc, setSortAsc] = useState(false);
   const [selected, setSelected] = useState<any[]>([]);
   
   const columns = [

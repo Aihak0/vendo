@@ -43,7 +43,7 @@ export interface Mesin {
     column_slots: number;
     slots: SlotData[];
     teknisi_id: string;
-    mesin_teknisi:any[];
+    teknisi:any[];
 }
 
 export interface SlotData {
@@ -51,6 +51,7 @@ export interface SlotData {
   kode: string;  // contoh: "R1C1"
   produk_id: string;
   stock: number;
+  max_stock?: number;
   produk?: Produk; 
   metadata: {
     row_number: number;
@@ -71,6 +72,7 @@ export interface Column {
   produk_id?: string;
   produk?: Produk;
   changed?: boolean;
+  max_stock?: number;
 }
 
 export interface SlotRow {

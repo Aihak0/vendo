@@ -19,6 +19,8 @@ export class TransaksiController {
         const dataMesin = (context as any).mesin;
             console.log("ahhahahhah",dataMesin)
         await this.transaksiService.paymentReq(data, dataMesin).catch(err => {
+
+            console.error("Error in paymentReq:", err);
             this.client.emit(`generate/qr`, {
                 success: false,
                 message: err.message || "Error Payment Req" ,

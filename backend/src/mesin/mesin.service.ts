@@ -3,11 +3,13 @@ import { ClientProxy } from '@nestjs/microservices/client/client-proxy';
 import { MqttRecordBuilder } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
 import { DatabaseService } from 'src/database/database.service';
+import { ConfigService } from '@nestjs/config';
+
 
 @Injectable()
 export class MesinService {
     constructor(private databaseService: DatabaseService,
-       @Inject('HIVE_CLIENT') private client: ClientProxy,
+       @Inject('HIVE_CLIENT') private client: ClientProxy, private configService: ConfigService
     ){}
 
     private async sendMqtt(topic: string, payload: any, qos: 0 | 1 | 2 = 1) {
@@ -434,6 +436,7 @@ export class MesinService {
               !oldSlot ||
               oldSlot.produk_id !== item.produk_id ||
               oldSlot.stock !== item.stock ||
+              oldSlot.max_stock !== item.max_stock ||
               oldSlot.metadata?.span !== item.span ||
               JSON.stringify(oldSlot.metadata?.gabungan) !==
               JSON.stringify(item.gabungan);
@@ -444,6 +447,7 @@ export class MesinService {
                   mesin_id: id,
                   produk_id: item.produk_id || null,
                   stock: item.stock || 0,
+                  max_stock: item.max_stock || 0,
                   metadata: {
                     span: item.span,
                     gabungan: item.gabungan,
@@ -513,13 +517,15 @@ export class MesinService {
                 mesin_id,
                 produk_id,
                 stock,
+                max_stock,
                 metadata
               )
-              VALUES ($1, $2, $3, $4, $5)
+              VALUES ($1, $2, $3, $4, $5, $6)
               ON CONFLICT (mesin_id, kode)
               DO UPDATE SET
                 produk_id = EXCLUDED.produk_id,
                 stock = EXCLUDED.stock,
+                max_stock = EXCLUDED.max_stock,
                 metadata = EXCLUDED.metadata,
                 updated_at = NOW()
               `,
@@ -528,6 +534,7 @@ export class MesinService {
                 item.mesin_id,
                 item.produk_id,
                 item.stock,
+                item.max_stock,
                 JSON.stringify(item.metadata),
               ]
             );
@@ -617,7 +624,7 @@ export class MesinService {
         let dataUpdateMesin: any = null;
 
         if (isMesinChanged) {
-          const updateResult = await db.query(
+          await db.query(
             `
             UPDATE mesin
             SET
@@ -634,7 +641,7 @@ export class MesinService {
               kode_pos = $11,
               updated_at = NOW()
             WHERE id = $12
-            RETURNING *
+            
             `,
             [
               body.nama,
@@ -652,37 +659,64 @@ export class MesinService {
             ]
           );
 
-          dataUpdateMesin = updateResult.rows[0];
-
-          // ambil slot + produk
-          const slotResult = await db.query(
-            `
-            SELECT
-              s.produk_id,
-              s.kode,
-              s.stock,
-              s.metadata,
-              json_build_object(
-                'nama', p.nama,
-                'harga', p.harga,
-                'img_url', p.reduced_img
-              ) as produk
-            FROM slot s
-            LEFT JOIN produk p
-              ON p.id = s.produk_id
-            WHERE s.mesin_id = $1
-            `,
-            [id]
-          );
-
-          dataUpdateMesin.slot = slotResult.rows;
-
-          await this.sendMqtt(
-            `mesin/${dataUpdateMesin.kode}/detail`,
-            { dataUpdateMesin },
-            1
-          );
         }
+        // ambil slot + produk
+        const selectResult = await db.query(
+          `
+          SELECT json_build_object(
+                  'kode', m.kode,
+                  'nama', m.nama,
+                  'created_at', m.created_at,
+                  'status', m.status,
+                  'updated_at', m.updated_at,
+                  'row_slots', m.row_slots,
+                  'id', m.id,
+                  'total_slot', m.total_slot,
+                  'latitude', m.latitude,
+                  'longitude', m.longitude,
+                  'desa', m.desa,
+                  'kecamatan', m.kecamatan,
+                  'kabupaten', m.kabupaten,
+                  'provinsi', m.provinsi,
+                  'negara', m.negara,
+                  'kode_pos', m.kode_pos,
+                  'slot', COALESCE(s_agg.slots, '[]'::json)
+              ) AS result
+              FROM mesin m
+              LEFT JOIN (
+                  SELECT 
+                      s.mesin_id,
+                      json_agg(
+                          json_build_object(
+                              'produk_id', s.produk_id,
+                              'kode', s.kode,
+                              'stock', s.stock,
+                              'max_stock', s.max_stock,
+                              'metadata', s.metadata,
+                              'produk', json_build_object(
+                                  'nama', p.nama,
+                                  'harga', p.harga,
+                                  'img_url', CASE WHEN p.reduced_img IS NOT NULL THEN $2 || p.reduced_img ELSE null END
+                              )
+                          )
+                      ) AS slots
+                  FROM slot s
+                  LEFT JOIN produk p ON p.id = s.produk_id
+                  GROUP BY s.mesin_id
+              ) s_agg ON s_agg.mesin_id = m.id
+              WHERE m.id = $1;
+          `,
+          [id, `http://${this.configService.get('MINIO_ENDPOINT')}:${this.configService.get('MINIO_PORT')}/`]
+        );
+
+        const fullOutput = selectResult.rows[0].result;
+
+        console.log("keupdatekan");
+        await this.sendMqtt(
+          `mesin/${fullOutput.kode}/detail`,
+          { dataMesin: fullOutput },
+          1
+        );
 
         return {
           success: true,
@@ -718,13 +752,16 @@ export class MesinService {
 
       try{
 
+        console.log("old mesin", kode, status);
         const queryOldMesin = await db.query(
           `SELECT status FROM mesin WHERE kode = $1`, 
           [kode]
         );
 
         const oldMesin = queryOldMesin.rows[0]
+        console.log("old mesin", oldMesin);
 
+        if(!oldMesin) throw new BadRequestException("Mesin tidak ditemukan");
         if(oldMesin.status === status) throw new BadRequestException("Permintaan tidak bisa dilanjutkan");
 
         const queryUpdateMesin = `
@@ -748,7 +785,7 @@ export class MesinService {
                       SELECT json_build_object(
                         'nama', p.nama,
                         'harga', p.harga,
-                        'img_url', p.reduced_img
+                        'img_url', CASE WHEN p.reduced_img IS NOT NULL THEN $3 || p.reduced_img ELSE null END
                       )
                       FROM produk p 
                       WHERE p.id = s.produk_id
@@ -762,7 +799,7 @@ export class MesinService {
             ) AS slot
           FROM updated_mesin m;
         `;
-        const resDataMesin = await db.query(queryUpdateMesin, [status, kode]);
+        const resDataMesin = await db.query(queryUpdateMesin, [status, kode, `http://${this.configService.get('MINIO_ENDPOINT')}:${this.configService.get('MINIO_PORT')}/`]);
         const dataMesin = resDataMesin.rows[0]
         let messageLog = "";
         if(status === "online"){

@@ -37,7 +37,7 @@ export default function TransaksiPage() {
   const [activeStatusTransaksi, setActiveStatusTransaksi] = useState('all');
   const [activeStatusPembayaran, setActiveStatusPembayaran] = useState('all');
   const [sortKey, setSortKey] = useState<string | null>(null);
-  const [sortAsc, setSortAsc] = useState(true);
+  const [sortAsc, setSortAsc] = useState(false);
   const [selected, setSelected] = useState<any[]>([]);
   const [ openModalDetail, setOpenModalDetail] = useState(false);
   const [ dataDetail, setDataDetail] = useState<any>(null);
@@ -53,7 +53,7 @@ export default function TransaksiPage() {
     { key: "status", label: "Status Order" },
     { key: "status_pembayaran", label: "Status Pembayaran" },
     { key: "total", label: "total" },
-    { key: "tanggal", label: "Waktu Transaksi" },
+    { key: "updated_at", label: "Waktu Transaksi" },
   ];
   const { data: transaksi, isLoading, error } = useQuery({
     // Sangat penting: masukkan searchTerm ke queryKey agar otomatis refetch saat ketik

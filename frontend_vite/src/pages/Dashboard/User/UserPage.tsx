@@ -73,12 +73,12 @@ export default function UserPage() {
     setSearchTerm("");
     setSelected([]);
   }
-  const toggleSelect = (user_id: string, is_active: boolean) =>
+  const toggleSelect = (id: string, is_active: boolean) =>
     setSelected((prev) =>
-    prev.some(item => item.user_id === user_id) ? prev.filter((x) => x.user_id !== user_id) : [...prev, { user_id: user_id, is_active: is_active }]
+    prev.some(item => item.id === id) ? prev.filter((x) => x.id !== id) : [...prev, { id: id, is_active: is_active }]
   );
 
-  const toggleAll = () => setSelected(selected.length === user.data.length ? [] : user.data.map((r:any) => ({ user_id: r.user_id, is_active: r.is_active })));
+  const toggleAll = () => setSelected(selected.length === user.data.length ? [] : user.data.map((r:any) => ({ id: r.id, is_active: r.is_active })));
 
   useEffect(() => {
     setSelected([]); // atau null, tergantung tipe data state kamu
@@ -252,14 +252,14 @@ export default function UserPage() {
                 user?.data?.map((row: any) => (
                   
                   <tr
-                    key={row.user_id}
+                    key={row.id}
                     className={`transition-colors border-b border-slate-200 ${row.is_active ? "hover:bg-slate-50 dark:hover:bg-slate-700": "bg-slate-900"} dark:border-blue-900  ${selected.some(item => item.user_id === row.user_id) ? "bg-blue-50 dark:bg-blue-950" : ""}`}
                   >
                     <td className="px-4 py-3.5">
                       <input
                         type="checkbox"
-                        checked={selected.some(item => item.user_id === row.user_id)}
-                        onChange={() => toggleSelect(row.user_id, row.is_active)}
+                        checked={selected.some(item => item.id === row.id)}
+                        onChange={() => toggleSelect(row.id, row.is_active)}
                         className="w-4 h-4 cursor-pointer rounded border transition-all duration-200
                                         appearance-none 
                                         bg-white border-slate-300 
@@ -307,7 +307,7 @@ export default function UserPage() {
                             <PenLine size={14}/>
                           </button>
                           <button onClick={() => {
-                                            setDataDeactivate([{user_id: row.user_id, is_active: row.is_active}]);
+                                            setDataDeactivate([{user_id: row.id, is_active: row.is_active}]);
                                             setOpenModalDelete(true);
                                           }}
                                   className={`p-1.5 rounded-lg text-slate-400 ${ row.is_active ? `hover:text-red-500 hover:bg-red-50 dark:hover:bg-slate-800` : `hover:text-emerald-500 hover:bg-emerald-100/60 dark:hover:bg-slate-800`}  transition`}>

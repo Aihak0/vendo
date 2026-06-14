@@ -133,8 +133,9 @@ export function ProdukEdit({ isOpen, onClose, dataEdit }: MesinEditModalProps) {
             setKodePos(dataEdit.kodePos);
             setRows(dataEdit.row_slots); 
             setSlot(groupedByRow);
-            setTeknisiMesin(dataEdit.mesin_teknisi || []);
+            setTeknisiMesin(dataEdit.teknisi || []);
             console.log("slot yang dis et", groupedByRow)
+            console.log("data to edit", dataEdit);
         }
     }, [dataEdit, isOpen]);
 
@@ -418,7 +419,7 @@ export function ProdukEdit({ isOpen, onClose, dataEdit }: MesinEditModalProps) {
                                                 >
                                                     <img
                                                     alt=""
-                                                    src={t.urlPasfoto}
+                                                    src={`http://${minIoHost}:${minIoPort}/${t.urlPasfoto}`}
                                                     className="size-4 shrink-0 rounded-full bg-gray-700 outline -outline-offset-1 outline-white/10"
                                                     />
                                                     <span>{t.nama}</span>

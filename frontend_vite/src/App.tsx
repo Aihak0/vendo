@@ -56,7 +56,7 @@ function AppContent() {
       <Header />
       <div className="flex">
         <AppSidebar />
-        <main className="flex-1 lg:ml-[90px] transition-all duration-300 pt-[64px]">
+        <main className="flex-1 lg:ml-[72px] transition-all duration-300 pt-[64px]">
           <div className="p-6">
             <Routes>
             

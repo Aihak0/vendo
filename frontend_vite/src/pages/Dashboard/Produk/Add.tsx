@@ -89,6 +89,7 @@ export function ProdukAdd ({isOpen, onClose} : ProdukAddModalProps){
     function resetForm() {
         setNama("");
         setFile(null);
+        setPreviewUrl(null);
         setHarga(null);
         const errors = {
             nama: "",
@@ -119,6 +120,8 @@ export function ProdukAdd ({isOpen, onClose} : ProdukAddModalProps){
             setLoading(false);
         }
         });
+
+        const allFildsFilled = nama.trim() !== "" && harga !== null && file !== null;
 
         async function handleAdd(e: React.FormEvent) {
         e.preventDefault();
@@ -303,9 +306,9 @@ export function ProdukAdd ({isOpen, onClose} : ProdukAddModalProps){
                                                 <button
                                                     type="submit"
 
-                                                    disabled={isLoading}
+                                                    disabled={isLoading || !allFildsFilled}
                                                     className={`flex-1 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed py-2 px-4 text-white font-medium rounded-r-lg transition-colors
-                                                        ${ isLoading
+                                                        ${ isLoading || !allFildsFilled
                                                             ? 'bg-blue-900 dark:bg-blue-950 cursor-not-allowed' // Style saat tombol mati
                                                             : 'bg-blue-600 dark:bg-blue-800 hover:bg-blue-700 cursor-pointer dark:hover:bg-blue-900' // Style saat tombol aktif
                                                         } text-white`}

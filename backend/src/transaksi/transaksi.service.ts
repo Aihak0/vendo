@@ -24,17 +24,27 @@ export class TransaksiService {
   }
 
   private async sendMqtt(topic: string, payload: any, qos: 0 | 1 | 2 = 1) {
-    try {
-      await this.client.connect();
+  try {
+    // Pastikan terkoneksi (NestJS biasanya auto-connect, tapi ini aman)
+    await this.client.connect();
 
-      const record = new MqttRecordBuilder(payload).setQoS(qos).build();
+    const record = new MqttRecordBuilder(payload).setQoS(qos).build();
 
-      await lastValueFrom(this.client.emit(topic, record));
-      console.log(`[MQTT] Terkirim ke ${topic} dengan QoS ${qos}`);
-    } catch (error: any) {
-      console.error(`[MQTT] Gagal kirim ke ${topic}:`, error.message);
-    }
+    // Jalankan tanpa lastValueFrom
+    this.client.emit(topic, record).subscribe({
+      next: () => {
+        // Terpanggil saat payload berhasil dimasukkan ke buffer antrean outbound
+        console.log(`[MQTT] Terkirim ke ${topic} dengan QoS ${qos}`);
+      },
+      error: (err) => {
+        console.error(`[MQTT] Gagal kirim ke ${topic}:`, err.message);
+      }
+    });
+
+  } catch (error: any) {
+    console.error(`[MQTT] Gagal inisiasi kirim ke ${topic}:`, error.message);
   }
+}
 
   private getFriendlyMessage(status: string): string {
     const messages = {
@@ -172,74 +182,85 @@ export class TransaksiService {
   }
 
   async paymentReq(data: any, dataMesin: any) {
-    const db = this.databaseService.getClient();
-    const midtrans = this.midtransService.getClient();
+      const db = this.databaseService.getClient();
+      const midtrans = this.midtransService.getClient();
 
-    const countQuery = `SELECT COUNT(*) as count FROM transaksi WHERE mesin_id = $1`;
-    const countResult = await db.query(countQuery, [dataMesin.id]);
-    const count = parseInt(countResult.rows[0].count, 10);
+      const countQuery = `SELECT COUNT(*) as count FROM transaksi WHERE mesin_id = $1`;
+      const countResult = await db.query(countQuery, [dataMesin.id]);
+      const count = parseInt(countResult.rows[0].count, 10);
 
-    if (!data.total || !data.kode || !data.items || !dataMesin) {
-      await this.sendMqtt(`generate/${dataMesin.kode}/qr`, { success: false, message: 'Data Tidak Lengkap.', data: {} }, 0);
-      return;
-    }
+      console.log("data meisn => ", dataMesin);
 
-    const formattedItems = data.items.map((item: any) => ({
-      id: item.produk_id,
-      price: Number(item.harga),
-      quantity: Number(item.qty),
-      name: item.nama_produk,
-    }));
-
-    const formatedOrderID = `${data.kode.slice(0, 8)}-${Date.now()}-${count || 0}`;
-
-    const midtransPayload = {
-      payment_type: 'qris',
-      transaction_details: {
-        order_id: formatedOrderID,
-        gross_amount: data.total,
-      },
-      qris: { acquirer: 'gopay' },
-      item_details: formattedItems,
-    };
-
-    try {
-      const result = await midtrans.charge(midtransPayload);
-
-      if (result.fraud_status !== 'accept') {
-        throw { source: 'midtrans', message: 'Transaksi terdeteksi penipuan.' };
+      if (!data.total || !data.kode || !data.items || !dataMesin) {
+        await this.sendMqtt(`generate/${dataMesin.kode}/qr`, { success: false, message: 'Data Tidak Lengkap.', data: {} }, 0);
+        return;
       }
-      
-      const query = `
-        SELECT * FROM tambah_transaksi_dengan_items($1, $2, $3, $4, $5, $6, $7::jsonb)
-      `;
 
-      const values = [
-        result.transaction_id,
-        result.order_id,
-        dataMesin.id,
-        'pending',
-        'pending',
-        Number(result.gross_amount),
-        JSON.stringify(data.items)
-      ];
-      const res = await db.query(query, values);
+      const formattedItems = data.items.map((item: any) => ({
+        id: item.produk_id,
+        price: Number(item.harga),
+        quantity: Number(item.qty),
+        name: item.nama_produk,
+      }));
 
-      console.log(JSON.stringify(res.rows, null, 2));
+      const formatedOrderID = `${data.kode.slice(0, 8)}-${Date.now()}-${count || 0}`;
 
-      const payload = {
-        success: true,
-        message: 'Generating QR',
-        data: result,
+      const midtransPayload = {
+        payment_type: 'qris',
+        transaction_details: {
+          order_id: formatedOrderID,
+          gross_amount: data.total,
+        },
+        qris: { acquirer: 'gopay' },
+        item_details: formattedItems,
       };
 
-      await this.sendMqtt(`generate/${dataMesin.kode}/qr`, payload, 1);
-    } catch (error: any) {
-      await db.query('ROLLBACK');
-      console.error('Payment Request Error:', error);
-      throw error;
+      try {
+        const result = await midtrans.charge(midtransPayload);
+
+        if (result.fraud_status !== 'accept') {
+          throw { source: 'midtrans', message: 'Transaksi terdeteksi penipuan.' };
+        }
+
+        // 1. MULAI TRANSAKSI DATABASE DI SINI
+        await db.query('BEGIN');
+
+        const query = `
+          SELECT * FROM tambah_transaksi_dengan_items($1, $2, $3, $4, $5, $6, $7::jsonb)
+        `;
+
+        const values = [
+          result.transaction_id,
+          result.order_id,
+          dataMesin.id,
+          'pending',
+          'pending',
+          Number(result.gross_amount),
+          JSON.stringify(data.items)
+        ];
+        
+        const res = await db.query(query, values);
+
+        // Buka log terdalam untuk melihat respons fungsi PG Anda
+        console.log("Response Function PG =>", JSON.stringify(res.rows, null, 2));
+
+        // 2. JIKA SELESAI DAN SUKSES, PERMANENKAN DATA KE DATABASE
+        await db.query('COMMIT');
+
+        const payload = {
+          success: true,
+          message: 'Generating QR',
+          data: result,
+        };
+
+        await this.sendMqtt(`generate/${dataMesin.kode}/qr`, payload, 1);
+      } catch (error: any) {
+        // 3. JIKA ERROR DI ATAS TERJADI, BATALKAN SEMUA PERUBAHAN DATABASE
+        await db.query('ROLLBACK');
+        console.error('Payment Request Error:', error);
+        throw error;
+      }
     }
-  }
 
   async updateStatusTransaksi(data: any) {
     const db = this.databaseService.getClient();
@@ -285,8 +306,9 @@ export class TransaksiService {
         throw new InternalServerErrorException('Transaksi tidak ditemukan');
       }
 
+      console.log("apanebrooo")
       await this.sendMqtt(`transaksi/status`, { success: true, message: this.getFriendlyMessage(transactionStatus), order_id: orderId, statusTransaksi: transactionStatus }, 0);
-
+      
       return { success: true, data: result.rows[0], code: 200 };
     } catch (err: any) {
       throw err;
@@ -338,9 +360,9 @@ export class TransaksiService {
 
 
       const { rows: datainventaris } = await db.query(
-        `SELECT kode, id, stock 
+        `SELECT kode, id, stock, max_stock
         FROM slot 
-        WHERE stock < 5 
+        WHERE stock * 2 <= max_stock
         AND mesin_id = $1`,
         [dataMesin.id]
       );
@@ -454,11 +476,39 @@ export class TransaksiService {
     const db = this.databaseService.getClient();
     const midtrans = this.midtransService.getClient();
 
+
+    if(!dataPayload || !dataPayload.order_id || !dataPayload.status) {
+      await this.sendMqtt(`transaksi/status`, { success: false, message: "Data Tidak Lengkap.", order_id: dataPayload?.order_id || null, statusTransaksi: 'failed'}, 0);
+      return;
+    }
+
+    if(dataPayload.status != 'refund'){
+        await this.sendMqtt(`transaksi/status`, { success: false, message: "Permintaan tidak dapat dilanjutkan.", order_id: dataPayload?.order_id || null, statusTransaksi: 'failed'}, 0);
+        return;
+    }
+
+    const queryOldTrans = `
+      SELECT * FROM transaksi where order_id = $1
+    `
+
+    const resultOldTrans = await db.query(queryOldTrans, [dataPayload.order_id]);
+
+    const dataOldTrans = resultOldTrans.rows[0];
+    if(!dataOldTrans){
+      await this.sendMqtt(`transaksi/status`, { success: false, message: "Order tidak ditemukan.", order_id: dataPayload.order_id, statusTransaksi: 'failed'}, 0);
+      return;
+    }
+
+    if(dataOldTrans.status_pembayaran != 'settlement'){
+      await this.sendMqtt(`transaksi/status`, { success: false, message: "Status Tidak bisa diubah.", order_id: dataPayload.order_id, statusTransaksi: 'failed'}, 0);
+      return;
+    }
+
     try {
       await db.query('BEGIN');
 
       // Request refund ke Midtrans
-      const refundResult = await midtrans.refund(dataPayload.order_id);
+      const refundResult = await midtrans.transaction.refund(dataPayload.order_id, { amount: dataPayload.total, reason: 'barang tidak jatuh' });
 
       if (!refundResult) {
         throw new InternalServerErrorException('Gagal melakukan refund ke Midtrans');

@@ -72,7 +72,7 @@ const MapMarker = ({ loc }: any) => {
         
           }
           >
-            {loc.teknisi.length > 0 ? (
+            {loc.teknisi?.length > 0 ? (
               <>
               {loc.teknisi.slice(0, 2).map((item :any, index: number) => 
                 item.urlPasfoto ? (

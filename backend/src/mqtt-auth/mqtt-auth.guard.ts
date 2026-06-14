@@ -2,7 +2,7 @@ import { CanActivate, ExecutionContext, Inject, Injectable } from '@nestjs/commo
 import { ClientProxy } from '@nestjs/microservices/client/client-proxy';
 import { Observable } from 'rxjs';
 import { SupabaseService } from 'src/supabase/supabase.service';
-import { MqttContext } from '@nestjs/microservices';
+import { MqttContext, RpcException } from '@nestjs/microservices';
 import { DatabaseService } from 'src/database/database.service';
 
 @Injectable()
@@ -22,6 +22,7 @@ export class MqttAuthGuard implements CanActivate {
     
     // 1. Ambil ID Mesin dari payload (misal mesin kirim { "deviceId": "VM-001", ... })
     const kode = data.kode;
+    console.log("kode mesin => ", kode);
 
     if (!kode) {
        this.client.emit(`transaksi/status`, {
@@ -40,8 +41,12 @@ export class MqttAuthGuard implements CanActivate {
     }
 
     // Eksekusi query dengan parameter yang aman
-    const mesin = await db.query(query, queryParams);
-    
+    const mesin = await db.query(query, [kode]);
+    if (mesin.rows.length == 0) {
+      // Lemparkan RpcException dengan pesan kustom Anda
+      throw new RpcException('mesin online tidak ditemukan');
+    }
+
     const client = context.switchToRpc().getContext();
     client.mesin = mesin.rows[0]; 
 
@@ -53,7 +58,7 @@ export class MqttAuthGuard implements CanActivate {
     console.log(error)
      this.client.emit(`transaksi/status`, {
           success: false,
-          message: `Akses ditolak untuk mesin: ${kode}` ,
+          message: error.message || `Akses ditolak untuk mesin: ${kode}` ,
       });
     return false; 
 

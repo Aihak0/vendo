@@ -119,8 +119,8 @@ export default function PageDashboardTeknisi(){
     },[data])
     return ( 
         <div className="">
-            <div className="grid grid-cols-4 gap-6 ">
-                <div className="col-span-2 grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+                <div className="col-span-1 lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
                     { data?.length === 0 && !isLoading && (
                         <div className="text-center py-12 text-gray-400 dark:text-gray-400 text-sm">
                             Data tidak ditemukan
@@ -161,7 +161,7 @@ export default function PageDashboardTeknisi(){
                                     </span>
                                 </div>
                                 <p className="text-gray-500 text-sm mb-3">{lokasiLengkap}</p>
-                                <div className="h-[200px] overflow-y-auto mb-4 no-scrollbar">
+                                <div className="h-[150px] sm:h-[200px] overflow-y-auto mb-4 no-scrollbar">
                                     
                                     {slot.map((s) => (
                                         <div key={s.row_number} className="flex justify-between ">
@@ -182,7 +182,7 @@ export default function PageDashboardTeknisi(){
                                                                         flex gap-4 justify-between
                                                                         rounded-lg border-[1.5px] px-3 py-2
                                                                         transition-colors duration-100 select-none pr-3
-                                                                        ${ c.produk && c.stock === 0 ? 'bg-red-100 dark:bg-red-950  border-red-300 dark:border-red-700 text-red-600 dark:text-red-500 ' :  c.stock && c.stock <= 5 ? 'bg-yellow-100 dark:bg-yellow-950  border-yellow-300 dark:border-yellow-700 text-yellow-600 dark:text-yellow-500' : c.produk && c.stock && c.stock > 5 ? 'bg-green-100 dark:bg-green-950 border-green-300 dark:border-green-700 text-green-600 dark:text-green-400' :
+                                                                        ${ c.produk && c.stock === 0 ? 'bg-red-100 dark:bg-red-950  border-red-300 dark:border-red-700 text-red-600 dark:text-red-500 ' :  c.produk &&  c.stock  && c.max_stock && c.stock / c.max_stock * 100  <= 50 ? 'bg-yellow-100 dark:bg-yellow-950  border-yellow-300 dark:border-yellow-700 text-yellow-600 dark:text-yellow-500' : c.produk && c.stock && c.stock > 5 ? 'bg-green-100 dark:bg-green-950 border-green-300 dark:border-green-700 text-green-600 dark:text-green-400' :
                                                                             "bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-700 text-gray-400 "
                                                                         }
                                                                         `}>
@@ -269,7 +269,7 @@ export default function PageDashboardTeknisi(){
                         <h2 className="font-bold">Log Mesin</h2>
                           <FilterDropdown activeFilter={activeLogFilter} onChange={setActiveLogFilter}  style={filterLogStyles} filter={filterLogTypes}/>
                     </div>
-                    <div className="h-[500px] overflow-y-auto no-scrollbar">
+                    <div className="h-[300px] sm:h-[400px] lg:h-[500px] overflow-y-auto no-scrollbar">
                         { loadingLogs ? (
                             <>
                                 <div className="animate-pulse p-3">

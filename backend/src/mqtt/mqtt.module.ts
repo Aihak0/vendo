@@ -13,7 +13,7 @@ import { ConfigService, ConfigModule } from '@nestjs/config'; // Pastikan Config
           const mqttUser = configService.get<string>('MQTT_USER')!;
           const mqttPass = configService.get<string>('MQTT_PASSWORD')!;
           const mqttHost = configService.get<string>('MQTT_HOST')!; // Sediakan default jika perlu
-	  const mqttPort = configService.get<string>('MQTT_PORT')!; 
+	        const mqttPort = configService.get<string>('MQTT_PORT')!; 
           return {
             transport: Transport.MQTT,
             options: {

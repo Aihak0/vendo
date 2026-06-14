@@ -87,7 +87,7 @@ export class ProdukService {
       const fileExt = file.originalname.split('.').pop();
       const fileName = `${randomUUID}-${nama.replace(/\s+/g, '_')}.jpg`;
       
-      const objectName = `produk/uploads/${fileName}`;
+      const objectName = `produk/upload/${fileName}`;
       const reducedJpgBuffer = `produk/reduced/${fileName}`;
 
       const originalJpgBuffer = await sharp(file.buffer)
@@ -149,21 +149,25 @@ export class ProdukService {
       let finalReducedImageUrl = existingProduct.reduced_img;
 
       if (file) {
-        const fileExt = file.originalname.split('.').pop();
         const fileName = `${id}-${Date.now()}.jpg`;
-        const [bucket, ...objectParts] = existingProduct.img_url.split('/');
+        const [bucket, ...objectParts] = existingProduct.img_url.split('/') ?? [];
         const objectName = objectParts.join('/');
-        const [bucketReduced, ...objectPartsReduced] = existingProduct.reduced_img.split('/');
+        const [bucketReduced, ...objectPartsReduced] = existingProduct.reduced_img?.split('/') ?? [];
         const objectNameReduced = objectPartsReduced.join('/');
 
-        await this.minioService.deleteFile(
-          bucket, // bucket
-          objectName
-        );
-        await this.minioService.deleteFile(
-          bucketReduced, // bucket
-          objectNameReduced
-        );
+        if(objectParts && objectParts.length > 0){
+          await this.minioService.deleteFile(
+            bucket, // bucket
+            objectName
+          );
+        }
+        if (objectPartsReduced && objectPartsReduced.length > 0) {
+          console.log("ke delete kan");
+          await this.minioService.deleteFile(
+            bucketReduced, // bucket
+            objectNameReduced
+          );
+        }
 
         const originalJpgBuffer = await sharp(file.buffer)
         .jpeg({ quality: 90 }) // Convert ke JPG dengan kualitas tinggi
@@ -210,8 +214,11 @@ export class ProdukService {
       }
 
       if (file) {
-        updates.push(`img_url = $${paramIndex}`);
+        updates.push(`img_url = $${paramIndex} `);
         params.push(finalImageUrl);
+        paramIndex++;
+        updates.push(`reduced_img = $${paramIndex} `);
+        params.push(finalReducedImageUrl);
         paramIndex++;
       }
 

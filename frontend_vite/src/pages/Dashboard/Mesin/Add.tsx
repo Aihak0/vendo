@@ -352,6 +352,8 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
             teknisi: IdTeknisi,
             kode_pos: kodePos
         };
+
+        console.log("Payload yang dikirim:", payload);
         mutation.mutate(payload);
     }
 
@@ -410,7 +412,7 @@ export function MesinAdd ({isOpen, onClose} : MesinAddModalProps){
                                                 >
                                                     <img
                                                     alt=""
-                                                    src={t.urlPasfoto}
+                                                    src={`http://${minIoHost}:${minIoPort}/${t.urlPasfoto}`}
                                                     className="size-4 shrink-0 rounded-full bg-gray-700 outline -outline-offset-1 outline-white/10"
                                                     />
                                                     <span>{t.nama}</span>

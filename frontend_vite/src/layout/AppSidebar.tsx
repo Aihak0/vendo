@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { LayoutDashboard, ListCheck, LogOut, Apple, Calculator, UserRound, ArrowUp01, Receipt, List } from "lucide-react";
+import { LayoutDashboard, ListCheck, LogOut, Apple, Calculator, UserRound, ArrowUp01, Receipt, List, Menu, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from 'react-router-dom';
 
 
 export function AppSidebar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const { profile, loading: loadingUser, user,  logout } = useAuth();
   const navigate = useNavigate();
 
@@ -25,19 +26,47 @@ export function AppSidebar() {
           />
         )}
 
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-30 lg:hidden"
+          onClick={() => setIsMobileOpen(false)} // ← tambah onClick
+        />
+      )}
+
+      <button
+        onClick={() => setIsMobileOpen(true)}
+        className="fixed bottom-5 right-5 z-50 lg:hidden flex items-center justify-center w-12 h-12 bg-indigo-600 text-white rounded-full shadow-lg"
+        aria-label="Buka menu"
+      >
+        <Menu size={22} /> 
+      </button>
+
       <aside
-        onMouseEnter={()=> setIsOpen(true)}
+        onMouseEnter={() => setIsOpen(true)}
         onMouseLeave={() => setIsOpen(false)}
         className={`
-         fixed inset-y-0 left-0 z-40 bg-white dark:bg-slate-950 border-r border-gray-200 dark:border-gray-700 transition-all duration-300
-         shadow-lg flex flex-col
-          transition-all duration-400 ease-in-out
-          ${isOpen ? 'w-64' : 'w-16 lg:w-18'}
+          fixed inset-y-0 left-0 z-40
+          bg-white dark:bg-slate-950
+          border-r border-gray-200 dark:border-gray-700
+          shadow-lg flex flex-col
+          transition-all duration-300 ease-in-out
+          ${isMobileOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64'}
           lg:translate-x-0
+          ${isOpen ? 'lg:w-64' : 'lg:w-18'}
         `}
         style={{ top: '64px' }}
       >
-  
+
+      <button
+        onClick={() => setIsMobileOpen(false)}
+        className={`bg-slate-200 dark:bg-slate-700 p-1.5 lg:hidden absolute top-3 -right-9 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200
+          transition-opacity duration-300
+          ${isMobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
+        `}
+        aria-label="Tutup menu"
+      >
+        <X size={20} />
+</button>
         {/* Nav */}
         <nav className="flex-1 px-3 py-5 space-y-1.5">
           { loadingUser || !user ? (
@@ -55,6 +84,7 @@ export function AppSidebar() {
                   isActive={pathnames === "/dashboard"}
                   label="Dashboard" 
                   isOpen={isOpen} 
+                  isMobileOpen={isMobileOpen}
                 />
                 <NavItem 
                   href={`/produk`}
@@ -62,13 +92,15 @@ export function AppSidebar() {
                   isActive={pathnames === "/produk"}
                   label="Produk" 
                   isOpen={isOpen} 
+                  isMobileOpen={isMobileOpen}
                 />
                 <NavItem 
                   href={`/mesin`}
                   icon={<Calculator size={22} />} 
                   isActive={pathnames === "/mesin"}
                   label="Mesin" 
-                  isOpen={isOpen} 
+                  isOpen={isOpen}
+                  isMobileOpen={isMobileOpen} 
                 />
                 <NavItem 
                   href={`/user`}
@@ -76,6 +108,7 @@ export function AppSidebar() {
                   isActive={pathnames === "/user"}
                   label="User" 
                   isOpen={isOpen} 
+                  isMobileOpen={isMobileOpen}
                 />
                 <NavItem 
                   href={`/task`}
@@ -83,6 +116,7 @@ export function AppSidebar() {
                   isActive={pathnames === "/task"}
                   label="Task" 
                   isOpen={isOpen} 
+                  isMobileOpen={isMobileOpen}
                 />
                 <hr className=" my-0 border-gray-300 dark:border-gray-700 my-3" />
                 <NavItem 
@@ -91,6 +125,7 @@ export function AppSidebar() {
                   isActive={pathnames === "/transaksi"}
                   label="Transaksi" 
                   isOpen={isOpen} 
+                  isMobileOpen={isMobileOpen}
                 />
                 <NavItem 
                   href={`/pergerakan-stock`}
@@ -98,6 +133,7 @@ export function AppSidebar() {
                   isActive={pathnames === "/pergerakan-stock"}
                   label="Pergerakan Stock" 
                   isOpen={isOpen} 
+                  isMobileOpen={isMobileOpen}
                 />
               </>
             ) : (
@@ -107,7 +143,8 @@ export function AppSidebar() {
                   icon={<LayoutDashboard size={22} />} 
                   isActive={pathnames === "/teknisi/dashboard"}
                   label="Dashboard" 
-                  isOpen={isOpen} 
+                  isOpen={isOpen}
+                  isMobileOpen={isMobileOpen} 
                 />
                 <NavItem 
                   href={`/teknisi/task`}
@@ -115,6 +152,7 @@ export function AppSidebar() {
                   isActive={pathnames === "/teknisi/task"}
                   label="Task" 
                   isOpen={isOpen} 
+                  isMobileOpen={isMobileOpen}
                 />
               </>
             )
@@ -170,6 +208,7 @@ function NavItem({
   icon,
   label,
   isOpen,
+  isMobileOpen,
   isActive = false,
   color = " hover:bg-gray-100/80 dark:hover:bg-slate-800",
 
@@ -178,6 +217,7 @@ function NavItem({
   icon: React.ReactNode;
   label: string;
   isOpen: boolean;
+  isMobileOpen: boolean;
   isActive?: boolean;
   color?: string;
 }) {
@@ -188,7 +228,7 @@ function NavItem({
         group flex items-center rounded-lg px-3 py-3 transition-all duration-300 text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-300
         ${isActive ? 'bg-gray-100/80 text-indigo-600 dark:bg-slate-800 dark:text-indigo-300' : ''}
         ${ !isActive && color}
-        ${isOpen ? 'justify-start gap-3' : ''}
+        ${isOpen || isMobileOpen ? 'justify-start gap-3' : ''}
       `}
       title={!isOpen ? label : undefined}   // tooltip saat collapsed
     >
@@ -196,7 +236,7 @@ function NavItem({
       <span 
         className={`
           flex-shrink-0 transition-all duration-100
-          ${isOpen ? 'text-90' : 'text-sm scale-110'}
+          ${isOpen || isMobileOpen ? 'text-90' : 'text-sm scale-110'}
         `}
       >
         {icon}
@@ -206,14 +246,14 @@ function NavItem({
       <span 
         className={`
           font-medium whitespace-nowrap overflow-hidden transition-all duration-400 ease-in-out
-          ${isOpen 
+          ${isOpen || isMobileOpen
             ? 'opacity-100 max-w-[140px] translate-x-0' 
             : 'opacity-0 max-w-0 -translate-x-2'
           }
         `}
       >
         {/* Versi panjang → pendek (opsional) */}
-        {isOpen ? label : ""}
+        {isOpen || isMobileOpen ? label : ""}
       </span>
     </Link>
   );

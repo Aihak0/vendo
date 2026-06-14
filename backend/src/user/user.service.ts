@@ -120,8 +120,8 @@ export class UserService {
         await db.query('BEGIN');
 
         const insertProfileQuery = `
-          INSERT INTO users (id, nama, role, email, is_default_password, "urlPasfoto", password)
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          INSERT INTO users (id, nama, role, email, is_default_password, "urlPasfoto", password, is_active)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         `;
         await db.query(insertProfileQuery, [
           userId,
@@ -130,7 +130,8 @@ export class UserService {
           email,
           true,
           urlPasfoto,
-          hashedPassword
+          hashedPassword,
+          true
         ]);
 
         await db.query('COMMIT');
@@ -314,6 +315,7 @@ export class UserService {
 
     async deactivateUser(body: any[]) {
       const db = this.databaseService.getClient();
+      console.log("BODY DEACTIVATE USER:", body);
       try {
         if (!body || body.length === 0) {
           throw new BadRequestException('Data Tidak Ditemukan');
